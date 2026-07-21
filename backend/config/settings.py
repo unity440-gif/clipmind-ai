@@ -18,6 +18,7 @@ class Settings(BaseSettings):
 
     # Will be used starting Module for Celery/Redis
     REDIS_URL: str = "redis://redis:6379/0"
+    JWT_SECRET: str = "changeme-dev-only-secret"
 
     model_config = SettingsConfigDict(
         env_file=".env",
