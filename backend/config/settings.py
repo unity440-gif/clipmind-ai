@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     # Will be used starting Module for Celery/Redis
     REDIS_URL: str = "redis://redis:6379/0"
     JWT_SECRET: str = "changeme-dev-only-secret"
+    MAX_UPLOAD_SIZE_BYTES: int = 5 * 1024 * 1024 * 1024  # 5GB, per your spec
+    ALLOWED_VIDEO_EXTENSIONS: tuple = (".mp4", ".mov", ".avi", ".mkv")
+    UPLOAD_DIR: str = "uploads"
+
 
     model_config = SettingsConfigDict(
         env_file=".env",

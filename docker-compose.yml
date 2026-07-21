@@ -1,5 +1,3 @@
-
-
 services:
   backend:
     build: ./backend
@@ -8,6 +6,7 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      - clipmind_uploads:/app/uploads
     env_file:
       - .env
     depends_on:
@@ -36,3 +35,4 @@ services:
 
 volumes:
   clipmind_pgdata:
+  clipmind_uploads:

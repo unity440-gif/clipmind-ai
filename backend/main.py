@@ -5,6 +5,9 @@ Business logic never lives here — it lives in services/ and routes/ delegate t
 """
 from api.routes import auth
 from fastapi import FastAPI
+from api.routes import projects
+from api.routes import videos
+
 
 from config.settings import settings
 from api.routes import health
@@ -17,6 +20,10 @@ app = FastAPI(
 # Register routers. Each new feature module will add one line here.
 app.include_router(health.router)
 app.include_router(auth.router)
+app.include_router(projects.router)
+app.include_router(videos.router)
+
+
 
 @app.get("/")
 def root():
