@@ -8,6 +8,7 @@ Cloudflare R2 in a later module, behind the same endpoint shape).
 import os
 import uuid
 from pathlib import Path
+from workers.tasks import extract_audio_task
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.orm import Session
@@ -96,5 +97,11 @@ async def upload_video(
 
     db.commit()
     db.refresh(video)
+
+    # Kick off audio extraction in the background — this returns immediately,
+    # the actual work happens in a separate Celery worker process.
+    extract_audio_task.delay(str(video.id))
+
     return video
+
 
