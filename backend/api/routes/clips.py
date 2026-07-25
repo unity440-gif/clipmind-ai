@@ -2,6 +2,7 @@
 Clip routes.
 This is where AI hook-detection actually runs: given a video with a transcript,
 ask OpenRouter to identify the best clips and save them as Clip rows.
+Also triggers FFmpeg rendering of each clip in the background.
 """
 
 import uuid
@@ -17,6 +18,7 @@ from models.clip import Clip
 from schemas.clip import ClipResponse
 from services.hook_detection import detect_hooks
 from api.dependencies import get_current_user
+from workers.tasks import render_clip_task
 
 router = APIRouter(prefix="/videos", tags=["clips"])
 
@@ -29,6 +31,7 @@ def run_hook_detection(
 ):
     """
     Runs AI hook detection on a video's transcript and saves the results as Clips.
+    Then triggers background rendering of each clip into its own video file.
     """
     video = (
         db.query(Video)
@@ -46,9 +49,6 @@ def run_hook_detection(
         )
 
     try:
-        # NOTE: for now, transcript_path actually holds raw transcript text
-        # (set via the test-only endpoint). Once Whisper is built, this will
-        # instead read the transcript file from that path.
         detected_clips = detect_hooks(video.transcript_path)
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
@@ -78,6 +78,9 @@ def run_hook_detection(
     db.commit()
     for clip in saved_clips:
         db.refresh(clip)
+        # Kick off rendering for each clip in the background —
+        # the AI picks are saved instantly, actual video files come shortly after.
+        render_clip_task.delay(str(clip.id))
 
     return saved_clips
 

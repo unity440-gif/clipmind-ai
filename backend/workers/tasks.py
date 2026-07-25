@@ -10,7 +10,8 @@ from workers.celery_app import celery_app
 from database.session import SessionLocal
 from models.video import Video
 from models.project import Project
-from services.video_processor import extract_audio, get_video_duration_seconds
+from models.clip import Clip
+from services.video_processor import extract_audio, get_video_duration_seconds, cut_clip
 
 
 @celery_app.task(name="extract_audio_task")
@@ -18,15 +19,12 @@ def extract_audio_task(video_id: str):
     """
     Background job: extracts audio from an uploaded video,
     updates its duration, and advances the project's status.
-
-    Runs in a separate worker process — NOT inside the web server —
-    so a slow/large video never blocks or times out an API request.
     """
     db = SessionLocal()
     try:
         video = db.query(Video).filter(Video.id == video_id).first()
         if not video:
-            return  # video was deleted or id was wrong; nothing to do
+            return
 
         project = db.query(Project).filter(Project.id == video.project_id).first()
 
@@ -34,19 +32,63 @@ def extract_audio_task(video_id: str):
             project.status = "extracting_audio"
             db.commit()
 
-            # Read video duration (fills in metadata we didn't have at upload time)
             video.duration_seconds = get_video_duration_seconds(video.storage_path)
 
-            # Extract audio to a .wav file next to the video
             audio_path = str(Path(video.storage_path).with_suffix(".wav"))
             extract_audio(video.storage_path, audio_path)
 
-            video.transcript_path = None  # will be set once Whisper runs (Module 7)
             project.status = "audio_extracted"
             db.commit()
 
         except Exception as e:
             project.status = "failed"
+            db.commit()
+            raise e
+
+    finally:
+        db.close()
+
+
+@celery_app.task(name="render_clip_task")
+def render_clip_task(clip_id: str):
+    """
+    Background job: cuts a single clip out of its source video using FFmpeg
+    and saves the resulting file, updating the clip's status as it progresses.
+    """
+    db = SessionLocal()
+    try:
+        clip = db.query(Clip).filter(Clip.id == clip_id).first()
+        if not clip:
+            return
+
+        video = db.query(Video).filter(Video.id == clip.video_id).first()
+
+        try:
+            clip.status = "rendering"
+            db.commit()
+
+            if clip.start_time_seconds >= video.duration_seconds:
+                raise ValueError(
+                    f"Clip start time ({clip.start_time_seconds}s) is beyond "
+                    f"the video's actual duration ({video.duration_seconds}s)."
+                )
+
+            output_path = str(
+                Path(video.storage_path).parent / f"clip_{clip.id}.mp4"
+            )
+            cut_clip(
+                source_video_path=video.storage_path,
+                output_path=output_path,
+                start_seconds=clip.start_time_seconds,
+                end_seconds=clip.end_time_seconds,
+            )
+
+            clip.storage_path = output_path
+            clip.status = "completed"
+            db.commit()
+
+        except Exception as e:
+            clip.status = "failed"
             db.commit()
             raise e
 

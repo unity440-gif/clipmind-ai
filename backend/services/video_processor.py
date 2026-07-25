@@ -52,3 +52,26 @@ def get_video_duration_seconds(video_path: str) -> float:
         raise RuntimeError(f"ffprobe failed: {result.stderr}")
 
     return float(result.stdout.strip())
+def cut_clip(source_video_path: str, output_path: str, start_seconds: float, end_seconds: float) -> None:
+    """
+    Cuts a segment out of a source video and saves it as its own file.
+    Uses stream copy when possible (fast, no re-encoding), falling back
+    to re-encoding only if needed for accuracy at the exact cut points.
+    """
+    duration = end_seconds - start_seconds
+
+    command = [
+        "ffmpeg",
+        "-i", source_video_path,
+        "-ss", str(start_seconds),   # start point
+        "-t", str(duration),          # how long to capture
+        "-c:v", "libx264",            # re-encode video for frame-accurate cuts
+        "-c:a", "aac",                # re-encode audio to a widely compatible codec
+        "-y",                          # overwrite if exists
+        output_path,
+    ]
+
+    result = subprocess.run(command, capture_output=True, text=True)
+
+    if result.returncode != 0:
+        raise RuntimeError(f"FFmpeg clip cutting failed: {result.stderr}")
