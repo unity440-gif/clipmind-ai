@@ -13,6 +13,7 @@ from api.routes import projects
 from api.routes import videos
 from api.routes import ai_test
 from api.routes import clips
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -25,6 +26,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # Register routers. Each new feature module adds one line here.
 app.include_router(health.router)

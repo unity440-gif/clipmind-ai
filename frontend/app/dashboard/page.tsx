@@ -90,7 +90,8 @@ export default function DashboardPage() {
             {projects.map((project) => (
               <div
                 key={project.id}
-                className="rounded-xl border border-neutral-800 bg-neutral-950 p-4 hover:border-neutral-700 transition"
+                onClick={() => router.push(`/projects/${project.id}`)}
+                className="rounded-xl border border-neutral-800 bg-neutral-950 p-4 hover:border-neutral-700 transition cursor-pointer"
               >
                 <h3 className="font-medium mb-1">{project.title}</h3>
                 <span className="inline-block text-xs px-2 py-1 rounded-full bg-neutral-900 text-neutral-400 border border-neutral-800">

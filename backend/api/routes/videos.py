@@ -132,3 +132,20 @@ def set_test_transcript(
 
     return {"success": True}
 
+@router.get("/{project_id}/videos", response_model=list[VideoResponse])
+def list_project_videos(
+    project_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Returns all videos belonging to a project the current user owns."""
+    project = (
+        db.query(Project)
+        .filter(Project.id == project_id, Project.user_id == current_user.id)
+        .first()
+    )
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found.")
+
+    return db.query(Video).filter(Video.project_id == project.id).all()
+
