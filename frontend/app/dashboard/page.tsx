@@ -20,7 +20,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function load() {
-      // If there's no token at all, don't even try — go straight to login.
       if (!getToken()) {
         router.push("/login");
         return;
@@ -36,7 +35,6 @@ export default function DashboardPage() {
         });
         setProjects(myProjects);
       } catch {
-        // Token is invalid or expired — send them back to login.
         router.push("/login");
       } finally {
         setLoading(false);
@@ -75,6 +73,12 @@ export default function DashboardPage() {
       <main className="max-w-5xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold">Your Projects</h2>
+          <button
+            onClick={() => router.push("/upload")}
+            className="rounded-lg bg-white text-black text-sm font-medium px-4 py-2 hover:bg-neutral-200 transition"
+          >
+            {"+ New Project"}
+          </button>
         </div>
 
         {projects.length === 0 ? (
