@@ -1,0 +1,46 @@
+"""
+YouTube downloader service using yt-dlp.
+Downloads a YouTube video to local storage, returning the same kind of
+metadata our upload flow produces — so both paths feed the same pipeline.
+The video_id is passed in from the caller so the saved filename always
+matches the database record's own ID.
+"""
+
+import uuid
+from pathlib import Path
+
+import yt_dlp
+
+from config.settings import settings
+
+
+def download_youtube_video(url: str, video_id: uuid.UUID) -> dict:
+    """
+    Downloads a YouTube video and returns its saved path, original title,
+    and file size — mirroring what the upload endpoint captures manually.
+    """
+    upload_dir = Path(settings.UPLOAD_DIR)
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    output_template = str(upload_dir / f"{video_id}.%(ext)s")
+
+    ydl_opts = {
+        "format": "mp4/bestvideo[ext=mp4]+bestaudio[ext=m4a]/best",
+        "outtmpl": output_template,
+        "merge_output_format": "mp4",
+        "quiet": True,
+        "no_warnings": True,
+    }
+
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(url, download=True)
+        saved_path = ydl.prepare_filename(info)
+
+        actual_path = Path(saved_path)
+        if not actual_path.exists():
+            actual_path = actual_path.with_suffix(".mp4")
+
+    return {
+        "storage_path": str(actual_path),
+        "original_filename": info.get("title", "youtube_video") + ".mp4",
+        "file_size_bytes": actual_path.stat().st_size,
+    }

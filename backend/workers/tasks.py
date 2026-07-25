@@ -12,13 +12,14 @@ from models.video import Video
 from models.project import Project
 from models.clip import Clip
 from services.video_processor import extract_audio, get_video_duration_seconds, cut_clip
+from services.whisper_service import transcribe_audio
 
 
 @celery_app.task(name="extract_audio_task")
 def extract_audio_task(video_id: str):
     """
-    Background job: extracts audio from an uploaded video,
-    updates its duration, and advances the project's status.
+    Background job: extracts audio from an uploaded video, transcribes it
+    with Whisper, and advances the project's status at each stage.
     """
     db = SessionLocal()
     try:
@@ -37,7 +38,20 @@ def extract_audio_task(video_id: str):
             audio_path = str(Path(video.storage_path).with_suffix(".wav"))
             extract_audio(video.storage_path, audio_path)
 
-            project.status = "audio_extracted"
+            project.status = "transcribing"
+            db.commit()
+
+            transcript_text = transcribe_audio(audio_path)
+
+            # Save the transcript as its own text file next to the video/audio,
+            # and store the FILE PATH (not the raw text) — matching how a real
+            # production system would handle potentially long transcripts.
+            transcript_file_path = str(Path(video.storage_path).with_suffix(".txt"))
+            with open(transcript_file_path, "w") as f:
+                f.write(transcript_text)
+
+            video.transcript_path = transcript_file_path
+            project.status = "transcribed"
             db.commit()
 
         except Exception as e:

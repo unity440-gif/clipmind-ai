@@ -49,7 +49,9 @@ def run_hook_detection(
         )
 
     try:
-        detected_clips = detect_hooks(video.transcript_path)
+        with open(video.transcript_path, "r") as f:
+            transcript_text = f.read()
+        detected_clips = detect_hooks(transcript_text)
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
 
@@ -78,8 +80,6 @@ def run_hook_detection(
     db.commit()
     for clip in saved_clips:
         db.refresh(clip)
-        # Kick off rendering for each clip in the background —
-        # the AI picks are saved instantly, actual video files come shortly after.
         render_clip_task.delay(str(clip.id))
 
     return saved_clips
