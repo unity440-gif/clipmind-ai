@@ -5,7 +5,7 @@ Business logic never lives here — it lives in services/ and routes/ delegate t
 """
 
 from fastapi import FastAPI
-
+from fastapi.middleware.cors import CORSMiddleware
 from config.settings import settings
 from api.routes import health
 from api.routes import auth
@@ -16,6 +16,13 @@ from api.routes import ai_test
 app = FastAPI(
     title=settings.APP_NAME,
     debug=settings.DEBUG,
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # your frontend's URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Register routers. Each new feature module adds one line here.
