@@ -12,6 +12,7 @@ from api.routes import auth
 from api.routes import projects
 from api.routes import videos
 from api.routes import ai_test
+from api.routes import clips
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -31,7 +32,7 @@ app.include_router(auth.router)
 app.include_router(projects.router)
 app.include_router(videos.router)
 app.include_router(ai_test.router)
-
+app.include_router(clips.router)
 
 @app.get("/")
 def root():

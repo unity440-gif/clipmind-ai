@@ -103,5 +103,32 @@ async def upload_video(
     extract_audio_task.delay(str(video.id))
 
     return video
+@router.post("/{project_id}/videos/{video_id}/set-test-transcript")
+def set_test_transcript(
+    project_id: uuid.UUID,
+    video_id: uuid.UUID,
+    transcript: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    TEMPORARY test-only endpoint: manually sets a transcript on a video.
+    Whisper (a later module) will write here automatically instead.
+    Safe to delete once real transcription is built.
+    """
+    video = (
+        db.query(Video)
+        .join(Project)
+        .filter(Video.id == video_id, Project.id == project_id, Project.user_id == current_user.id)
+        .first()
+    )
+    if not video:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Video not found.")
 
+    # For this test-only endpoint, we store the transcript text directly
+    # rather than a file path (the real Whisper module will use a file).
+    video.transcript_path = transcript
+    db.commit()
+
+    return {"success": True}
 
