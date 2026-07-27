@@ -1,65 +1,105 @@
-import Image from "next/image";
+import Link from "next/link";
 
-export default function Home() {
+export default function HomePage() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="min-h-screen bg-black text-white">
+      <header className="border-b border-neutral-900 px-6 py-4 flex items-center justify-between max-w-6xl mx-auto">
+        <span className="text-lg font-semibold">ClipMind AI</span>
+        <div className="flex items-center gap-4">
+          <Link href="/login" className="text-sm text-neutral-400 hover:text-white transition">
+            Log in
+          </Link>
+          <Link href="/signup" className="rounded-lg bg-white text-black text-sm font-medium px-4 py-2 hover:bg-neutral-200 transition">
+            Get Started
+          </Link>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </header>
+
+      <section className="max-w-4xl mx-auto px-6 pt-24 pb-20 text-center">
+        <h1 className="text-4xl sm:text-6xl font-semibold tracking-tight leading-tight">
+          Turn long videos into
+          <br />
+          <span className="bg-gradient-to-r from-white to-neutral-500 bg-clip-text text-transparent">
+            viral short clips
+          </span>
+        </h1>
+        <p className="mt-6 text-lg text-neutral-400 max-w-xl mx-auto">
+          Upload a video or paste a YouTube link. Our AI finds the best moments,
+          writes the hooks and captions, and cuts the clips — automatically.
+        </p>
+        <div className="mt-10 flex items-center justify-center gap-4">
+          <Link href="/signup" className="rounded-lg bg-white text-black font-medium px-6 py-3 hover:bg-neutral-200 transition">
+            Start Clipping — Free
+          </Link>
         </div>
-      </main>
+      </section>
+
+      <section className="max-w-5xl mx-auto px-6 py-20 border-t border-neutral-900">
+        <h2 className="text-2xl sm:text-3xl font-semibold text-center mb-16">
+          From video to viral in three steps
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-10">
+          <div>
+            <div className="text-sm text-neutral-600 mb-2">01</div>
+            <h3 className="text-lg font-medium mb-2">Upload or paste a link</h3>
+            <p className="text-neutral-400 text-sm">
+              Drop in an MP4, MOV, AVI, or MKV — or just paste a YouTube URL.
+              Long-form, podcasts, interviews, anything works.
+            </p>
+          </div>
+          <div>
+            <div className="text-sm text-neutral-600 mb-2">02</div>
+            <h3 className="text-lg font-medium mb-2">AI finds the best clips</h3>
+            <p className="text-neutral-400 text-sm">
+              Our AI analyzes the full transcript and identifies the moments
+              most likely to hook viewers and hold their attention.
+            </p>
+          </div>
+          <div>
+            <div className="text-sm text-neutral-600 mb-2">03</div>
+            <h3 className="text-lg font-medium mb-2">Get ready-to-post clips</h3>
+            <p className="text-neutral-400 text-sm">
+              Each clip comes with a title, hook, and platform-specific
+              captions and hashtags for TikTok, Reels, and Shorts.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="max-w-5xl mx-auto px-6 py-20 border-t border-neutral-900">
+        <h2 className="text-2xl sm:text-3xl font-semibold text-center mb-16">
+          Everything you need to clip like a pro
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[
+            { title: "AI Hook Detection", desc: "Finds the moments with the strongest hooks, emotion, and story arcs." },
+            { title: "Virality Scoring", desc: "Every clip is ranked by predicted performance, so you know what to post first." },
+            { title: "Auto Captions & Hashtags", desc: "Platform-specific captions and hashtags generated for every clip." },
+            { title: "YouTube Import", desc: "No download needed — just paste a link and we handle the rest." },
+            { title: "Fast Rendering", desc: "Clips are cut and ready to preview in your dashboard within moments." },
+            { title: "Multiple Formats", desc: "Export in 16:9, 9:16, or 1:1 to fit any platform." },
+          ].map((feature) => (
+            <div key={feature.title} className="rounded-xl border border-neutral-900 bg-neutral-950 p-6">
+              <h3 className="font-medium mb-2">{feature.title}</h3>
+              <p className="text-sm text-neutral-400">{feature.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="max-w-3xl mx-auto px-6 py-24 text-center border-t border-neutral-900">
+        <h2 className="text-3xl font-semibold mb-4">Ready to go viral?</h2>
+        <p className="text-neutral-400 mb-8">
+          Create your first clip in minutes — no credit card required.
+        </p>
+        <Link href="/signup" className="rounded-lg bg-white text-black font-medium px-6 py-3 hover:bg-neutral-200 transition inline-block">
+          Get Started Free
+        </Link>
+      </section>
+
+      <footer className="border-t border-neutral-900 py-8 text-center text-sm text-neutral-600">
+        © 2026 ClipMind AI. All rights reserved.
+      </footer>
     </div>
   );
 }
