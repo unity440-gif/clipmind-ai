@@ -16,3 +16,4 @@ httpx==0.28.1
 faster-whisper==1.1.0
 requests==2.32.3
 yt-dlp
+google-auth==2.36.0

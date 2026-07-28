@@ -33,3 +33,6 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True  # allows converting a SQLAlchemy User object directly into this schema
+        
+class GoogleLoginRequest(BaseModel):
+    credential: str  # the ID token Google's sign-in button gives us

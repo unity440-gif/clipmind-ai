@@ -8,6 +8,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from api.dependencies import get_current_user
 
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+
+from config.settings import settings
+from schemas.auth import GoogleLoginRequest
+
 from database.session import get_db
 from models.user import User
 from schemas.auth import SignupRequest, LoginRequest, TokenResponse, UserResponse
@@ -66,3 +72,36 @@ def get_me(current_user: User = Depends(get_current_user)):
     """
     return current_user
 
+@router.post("/google", response_model=TokenResponse)
+def google_login(payload: GoogleLoginRequest, db: Session = Depends(get_db)):
+    """
+    Verifies a Google ID token, then logs in the matching user —
+    creating a new account automatically if this is their first time.
+    """
+    try:
+        idinfo = id_token.verify_oauth2_token(
+            payload.credential,
+            google_requests.Request(),
+            settings.GOOGLE_CLIENT_ID,
+        )
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Google token.",
+        )
+
+    email = idinfo.get("email")
+    full_name = idinfo.get("name")
+
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        # First time signing in with this Google account — create a real
+        # user row. hashed_password stays NULL since they never set one;
+        # our login endpoint already treats that as "can't use password login."
+        user = User(email=email, full_name=full_name, is_email_verified=True)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    token = create_access_token(user_id=str(user.id))
+    return TokenResponse(access_token=token)

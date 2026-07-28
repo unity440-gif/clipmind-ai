@@ -1,8 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
+
+declare global {
+  interface Window {
+    google: any;
+  }
+}
 
 export default function SignupPage() {
   const router = useRouter();
@@ -11,6 +17,44 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const googleButtonRef = useRef<HTMLDivElement>(null);
+
+  async function handleGoogleResponse(response: { credential: string }) {
+    setError("");
+    setLoading(true);
+    try {
+      const data = await apiFetch("/auth/google", {
+        method: "POST",
+        body: JSON.stringify({ credential: response.credential }),
+      });
+      localStorage.setItem("access_token", data.access_token);
+      router.push("/dashboard");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Google sign-up failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (window.google && googleButtonRef.current) {
+        window.google.accounts.id.initialize({
+          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+          callback: handleGoogleResponse,
+        });
+        window.google.accounts.id.renderButton(googleButtonRef.current, {
+          theme: "outline",
+          size: "large",
+          width: 320,
+        });
+        clearInterval(interval);
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -18,14 +62,11 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      // Signup creates the account...
       await apiFetch("/auth/signup", {
         method: "POST",
         body: JSON.stringify({ email, password, full_name: fullName }),
       });
 
-      // ...then we log them in immediately so they don't have to enter
-      // their credentials twice right after creating the account.
       const loginData = await apiFetch("/auth/login", {
         method: "POST",
         body: JSON.stringify({ email, password }),
@@ -46,6 +87,16 @@ export default function SignupPage() {
         <h1 className="text-2xl font-semibold text-white mb-6 text-center">
           Create your ClipMind AI account
         </h1>
+
+        <div className="flex justify-center mb-6">
+          <div ref={googleButtonRef} />
+        </div>
+
+        <div className="flex items-center gap-3 mb-6">
+          <div className="flex-1 h-px bg-neutral-800" />
+          <span className="text-xs text-neutral-500">OR</span>
+          <div className="flex-1 h-px bg-neutral-800" />
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
