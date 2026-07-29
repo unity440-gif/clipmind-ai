@@ -50,7 +50,7 @@ export default function DashboardPage() {
   }, [router]);
 
   async function handleDelete(e: React.MouseEvent, projectId: string) {
-    e.stopPropagation(); // don't trigger the card's own click-to-open
+    e.stopPropagation();
 
     if (!confirm("Delete this project permanently? This cannot be undone.")) {
       return;
@@ -87,7 +87,12 @@ export default function DashboardPage() {
           <span className="text-sm text-neutral-400">
             {user?.credits_remaining} credits
           </span>
-          <span className="text-sm text-neutral-400">{user?.email}</span>
+          <button
+            onClick={() => router.push("/profile")}
+            className="text-sm text-neutral-400 hover:text-white transition"
+          >
+            {user?.email}
+          </button>
           <button
             onClick={logout}
             className="text-sm text-neutral-400 hover:text-white transition"
