@@ -67,13 +67,8 @@ export default function SignupPage() {
         body: JSON.stringify({ email, password, full_name: fullName }),
       });
 
-      const loginData = await apiFetch("/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ email, password }),
-      });
-
-      localStorage.setItem("access_token", loginData.access_token);
-      router.push("/dashboard");
+      // Don't log in yet — the account needs email verification first.
+      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Signup failed.");
     } finally {
