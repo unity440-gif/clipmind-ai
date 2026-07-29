@@ -17,6 +17,15 @@ export default function DashboardPage() {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function loadProjects() {
+    const token = getToken();
+    const myProjects = await apiFetch("/projects", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setProjects(myProjects);
+  }
 
   useEffect(() => {
     async function load() {
@@ -28,12 +37,7 @@ export default function DashboardPage() {
       try {
         const currentUser = await getCurrentUser();
         setUser(currentUser);
-
-        const token = getToken();
-        const myProjects = await apiFetch("/projects", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setProjects(myProjects);
+        await loadProjects();
       } catch {
         router.push("/login");
       } finally {
@@ -42,7 +46,30 @@ export default function DashboardPage() {
     }
 
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
+
+  async function handleDelete(e: React.MouseEvent, projectId: string) {
+    e.stopPropagation(); // don't trigger the card's own click-to-open
+
+    if (!confirm("Delete this project permanently? This cannot be undone.")) {
+      return;
+    }
+
+    setDeletingId(projectId);
+    try {
+      const token = getToken();
+      await apiFetch(`/projects/${projectId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      await loadProjects();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to delete project.");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   if (loading) {
     return (
@@ -91,9 +118,17 @@ export default function DashboardPage() {
               <div
                 key={project.id}
                 onClick={() => router.push(`/projects/${project.id}`)}
-                className="rounded-xl border border-neutral-800 bg-neutral-950 p-4 hover:border-neutral-700 transition cursor-pointer"
+                className="rounded-xl border border-neutral-800 bg-neutral-950 p-4 hover:border-neutral-700 transition cursor-pointer relative group"
               >
-                <h3 className="font-medium mb-1">{project.title}</h3>
+                <button
+                  onClick={(e) => handleDelete(e, project.id)}
+                  disabled={deletingId === project.id}
+                  className="absolute top-3 right-3 text-neutral-600 hover:text-red-400 transition text-xs opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                  title="Delete project"
+                >
+                  {deletingId === project.id ? "..." : "✕"}
+                </button>
+                <h3 className="font-medium mb-1 pr-4">{project.title}</h3>
                 <span className="inline-block text-xs px-2 py-1 rounded-full bg-neutral-900 text-neutral-400 border border-neutral-800">
                   {project.status}
                 </span>
