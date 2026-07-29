@@ -1,144 +1,209 @@
-import Link from "next/link";
+"use client";
 
-export default function HomePage() {
+import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { getToken } from "@/lib/auth";
+import { apiFetch } from "@/lib/api";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+export default function UploadPage() {
+  const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [mode, setMode] = useState<"file" | "youtube">("file");
+  const [title, setTitle] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [dragActive, setDragActive] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState("");
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragActive(false);
+    const dropped = e.dataTransfer.files?.[0];
+    if (dropped) setFile(dropped);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+
+    if (mode === "file" && !file) {
+      setError("Please choose a video file.");
+      return;
+    }
+    if (mode === "youtube" && !youtubeUrl.trim()) {
+      setError("Please paste a YouTube URL.");
+      return;
+    }
+
+    setUploading(true);
+    setProgress(0);
+
+    try {
+      const token = getToken();
+
+      const project = await apiFetch("/projects", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ title }),
+      });
+
+      if (mode === "youtube") {
+        const params = new URLSearchParams({ youtube_url: youtubeUrl.trim() });
+        await apiFetch(`/projects/${project.id}/videos/from-youtube?${params.toString()}`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } else {
+        await new Promise<void>((resolve, reject) => {
+          const formData = new FormData();
+          formData.append("file", file as File);
+
+          const xhr = new XMLHttpRequest();
+          xhr.open("POST", `${API_URL}/projects/${project.id}/videos`);
+          xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+
+          xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+              setProgress(Math.round((event.loaded / event.total) * 100));
+            }
+          };
+
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) resolve();
+            else reject(new Error("Upload failed."));
+          };
+          xhr.onerror = () => reject(new Error("Upload failed."));
+
+          xhr.send(formData);
+        });
+      }
+
+      router.push("/dashboard");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-black text-white">
-      {/* Nav */}
-      <header className="border-b border-neutral-900 px-6 py-4 flex items-center justify-between max-w-6xl mx-auto">
-        <span className="text-lg font-semibold">ClipMind AI</span>
-        <div className="flex items-center gap-4">
-          <Link
-            href="/login"
-            className="text-sm text-neutral-400 hover:text-white transition"
-          >
-            Log in
-          </Link>
-          <Link
-            href="/signup"
-            className="rounded-lg bg-white text-black text-sm font-medium px-4 py-2 hover:bg-neutral-200 transition"
-          >
-            Get Started
-          </Link>
-        </div>
-      </header>
+    <div className="min-h-screen bg-black text-white flex items-center justify-center px-4">
+      <div className="w-full max-w-lg">
+        <h1 className="text-2xl font-semibold mb-6">Create a new project</h1>
 
-      {/* Hero */}
-      <section className="max-w-4xl mx-auto px-6 pt-24 pb-20 text-center">
-        <h1 className="text-4xl sm:text-6xl font-semibold tracking-tight leading-tight">
-          Turn long videos into
-          <br />
-          <span className="bg-gradient-to-r from-white to-neutral-500 bg-clip-text text-transparent">
-            viral short clips
-          </span>
-        </h1>
-        <p className="mt-6 text-lg text-neutral-400 max-w-xl mx-auto">
-          Upload a video or paste a YouTube link. Our AI finds the best moments,
-          writes the hooks and captions, and cuts the clips — automatically.
-        </p>
-        <div className="mt-10 flex items-center justify-center gap-4">
-          <Link
-            href="/signup"
-            className="rounded-lg bg-white text-black font-medium px-6 py-3 hover:bg-neutral-200 transition"
+        <div className="flex gap-2 mb-6 bg-neutral-900 border border-neutral-800 rounded-lg p-1">
+          <button
+            type="button"
+            onClick={() => setMode("file")}
+            className={`flex-1 rounded-md py-2 text-sm font-medium transition ${
+              mode === "file" ? "bg-white text-black" : "text-neutral-400 hover:text-white"
+            }`}
           >
-            Start Clipping — Free
-          </Link>
+            Upload a file
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("youtube")}
+            className={`flex-1 rounded-md py-2 text-sm font-medium transition ${
+              mode === "youtube" ? "bg-white text-black" : "text-neutral-400 hover:text-white"
+            }`}
+          >
+            Paste YouTube URL
+          </button>
         </div>
-      </section>
 
-      {/* How it works */}
-      <section className="max-w-5xl mx-auto px-6 py-20 border-t border-neutral-900">
-        <h2 className="text-2xl sm:text-3xl font-semibold text-center mb-16">
-          From video to viral in three steps
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-10">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <div className="text-sm text-neutral-600 mb-2">01</div>
-            <h3 className="text-lg font-medium mb-2">Upload or paste a link</h3>
-            <p className="text-neutral-400 text-sm">
-              Drop in an MP4, MOV, AVI, or MKV — or just paste a YouTube URL.
-              Long-form, podcasts, interviews, anything works.
-            </p>
+            <label className="block text-sm text-neutral-400 mb-1">Project title</label>
+            <input
+              type="text"
+              required
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. My Podcast Episode 12"
+              className="w-full rounded-lg bg-neutral-900 border border-neutral-800 text-white px-4 py-2.5 outline-none focus:border-neutral-600"
+            />
           </div>
-          <div>
-            <div className="text-sm text-neutral-600 mb-2">02</div>
-            <h3 className="text-lg font-medium mb-2">AI finds the best clips</h3>
-            <p className="text-neutral-400 text-sm">
-              Our AI analyzes the full transcript and identifies the moments
-              most likely to hook viewers and hold their attention.
-            </p>
-          </div>
-          <div>
-            <div className="text-sm text-neutral-600 mb-2">03</div>
-            <h3 className="text-lg font-medium mb-2">Get ready-to-post clips</h3>
-            <p className="text-neutral-400 text-sm">
-              Each clip comes with a title, hook, and platform-specific
-              captions and hashtags for TikTok, Reels, and Shorts.
-            </p>
-          </div>
-        </div>
-      </section>
 
-      {/* Features */}
-      <section className="max-w-5xl mx-auto px-6 py-20 border-t border-neutral-900">
-        <h2 className="text-2xl sm:text-3xl font-semibold text-center mb-16">
-          Everything you need to clip like a pro
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[
-            {
-              title: "AI Hook Detection",
-              desc: "Finds the moments with the strongest hooks, emotion, and story arcs.",
-            },
-            {
-              title: "Virality Scoring",
-              desc: "Every clip is ranked by predicted performance, so you know what to post first.",
-            },
-            {
-              title: "Auto Captions & Hashtags",
-              desc: "Platform-specific captions and hashtags generated for every clip.",
-            },
-            {
-              title: "YouTube Import",
-              desc: "No download needed — just paste a link and we handle the rest.",
-            },
-            {
-              title: "Fast Rendering",
-              desc: "Clips are cut and ready to preview in your dashboard within moments.",
-            },
-            {
-              title: "Multiple Formats",
-              desc: "Export in 16:9, 9:16, or 1:1 to fit any platform.",
-            },
-          ].map((feature) => (
+          {mode === "file" ? (
             <div
-              key={feature.title}
-              className="rounded-xl border border-neutral-900 bg-neutral-950 p-6"
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragActive(true);
+              }}
+              onDragLeave={() => setDragActive(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`rounded-xl border-2 border-dashed px-6 py-12 text-center cursor-pointer transition ${
+                dragActive
+                  ? "border-white bg-neutral-900"
+                  : "border-neutral-800 hover:border-neutral-700"
+              }`}
             >
-              <h3 className="font-medium mb-2">{feature.title}</h3>
-              <p className="text-sm text-neutral-400">{feature.desc}</p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".mp4,.mov,.avi,.mkv"
+                className="hidden"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              />
+              {file ? (
+                <p className="text-neutral-300">{file.name}</p>
+              ) : (
+                <>
+                  <p className="text-neutral-400">Drag and drop a video here</p>
+                  <p className="text-neutral-600 text-sm mt-1">
+                    or click to browse — MP4, MOV, AVI, MKV
+                  </p>
+                </>
+              )}
             </div>
-          ))}
-        </div>
-      </section>
+          ) : (
+            <div>
+              <label className="block text-sm text-neutral-400 mb-1">YouTube URL</label>
+              <input
+                type="url"
+                value={youtubeUrl}
+                onChange={(e) => setYoutubeUrl(e.target.value)}
+                placeholder="https://www.youtube.com/watch?v=..."
+                className="w-full rounded-lg bg-neutral-900 border border-neutral-800 text-white px-4 py-2.5 outline-none focus:border-neutral-600"
+              />
+            </div>
+          )}
 
-      {/* CTA */}
-      <section className="max-w-3xl mx-auto px-6 py-24 text-center border-t border-neutral-900">
-        <h2 className="text-3xl font-semibold mb-4">Ready to go viral?</h2>
-        <p className="text-neutral-400 mb-8">
-          Create your first clip in minutes — no credit card required.
-        </p>
-        <Link
-          href="/signup"
-          className="rounded-lg bg-white text-black font-medium px-6 py-3 hover:bg-neutral-200 transition inline-block"
-        >
-          Get Started Free
-        </Link>
-      </section>
+          {uploading && mode === "file" && (
+            <div className="w-full bg-neutral-900 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-white h-full transition-all"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          )}
 
-      {/* Footer */}
-      <footer className="border-t border-neutral-900 py-8 text-center text-sm text-neutral-600">
-        © 2026 ClipMind AI. All rights reserved.
-      </footer>
+          {error && (
+            <p className="text-sm text-red-400 bg-red-950/40 border border-red-900 rounded-lg px-3 py-2">
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={uploading}
+            className="w-full rounded-lg bg-white text-black font-medium py-2.5 hover:bg-neutral-200 transition disabled:opacity-50"
+          >
+            {uploading
+              ? mode === "youtube"
+                ? "Downloading from YouTube..."
+                : `Uploading... ${progress}%`
+              : "Create Project"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
