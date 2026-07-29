@@ -40,3 +40,10 @@ class GoogleLoginRequest(BaseModel):
 class VerifyEmailRequest(BaseModel):
     email: EmailStr
     code: str
+class RequestProfileChangeRequest(BaseModel):
+    full_name: str | None = None
+    new_email: str | None = None
+
+
+class ConfirmProfileChangeRequest(BaseModel):
+    code: str

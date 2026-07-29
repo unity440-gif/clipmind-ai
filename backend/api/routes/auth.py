@@ -5,6 +5,7 @@ and current-user lookup.
 
 import random
 from datetime import datetime, timedelta
+from schemas.auth import RequestProfileChangeRequest, ConfirmProfileChangeRequest
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -141,4 +142,65 @@ def get_me(current_user: User = Depends(get_current_user)):
     """
     Returns the currently logged-in user's info.
     """
+    return current_user
+
+@router.post("/profile/request-change")
+def request_profile_change(
+    payload: RequestProfileChangeRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Stages a name/email change and sends a verification code to the
+    user's CURRENT email — the change only applies once that code is confirmed.
+    """
+    if not payload.full_name and not payload.new_email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provide at least a new name or new email.",
+        )
+
+    code = str(random.randint(100000, 999999))
+    expires_at = datetime.utcnow() + timedelta(minutes=15)
+
+    current_user.pending_full_name = payload.full_name
+    current_user.pending_email = payload.new_email
+    current_user.verification_code = code
+    current_user.verification_code_expires_at = expires_at
+    db.commit()
+
+    # Sent to the CURRENT email on file — proves whoever's making
+    # this change actually controls the existing account.
+    send_verification_email(current_user.email, code)
+
+    return {"success": True, "message": "Verification code sent to your current email."}
+
+
+@router.post("/profile/confirm-change", response_model=UserResponse)
+def confirm_profile_change(
+    payload: ConfirmProfileChangeRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Confirms a staged profile change using the code sent to the user's email.
+    """
+    if current_user.verification_code != payload.code:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid code.")
+
+    if current_user.verification_code_expires_at < datetime.utcnow():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Code has expired.")
+
+    if current_user.pending_full_name:
+        current_user.full_name = current_user.pending_full_name
+    if current_user.pending_email:
+        current_user.email = current_user.pending_email
+
+    current_user.pending_full_name = None
+    current_user.pending_email = None
+    current_user.verification_code = None
+    current_user.verification_code_expires_at = None
+    db.commit()
+    db.refresh(current_user)
+
     return current_user
