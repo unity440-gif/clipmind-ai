@@ -25,18 +25,18 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "https://brilliant-endurance-production-7fcc.up.railway.app",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Ensure the uploads folder exists before mounting it — a fresh server
-# (like a new Railway deploy) won't have this folder yet.
 os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
-# Register routers. Each new feature module adds one line here.
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(projects.router)
