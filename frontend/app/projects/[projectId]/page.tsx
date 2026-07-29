@@ -44,6 +44,12 @@ export default function ProjectDetailPage() {
   const [detecting, setDetecting] = useState(false);
   const [error, setError] = useState("");
 
+  // Clip generation settings, picked by the user before running AI detection.
+  const [minDuration, setMinDuration] = useState(60);
+  const [maxDuration, setMaxDuration] = useState(120);
+  const [aspectRatio, setAspectRatio] = useState("original");
+  const [numClips, setNumClips] = useState(5);
+
   async function loadData() {
     const token = getToken();
     if (!token) {
@@ -57,8 +63,6 @@ export default function ProjectDetailPage() {
       });
       setVideos(projectVideos);
 
-      // For simplicity, we show clips for the first video in the project.
-      // (Most projects will only ever have one video.)
       if (projectVideos.length > 0) {
         const videoClips = await apiFetch(`/videos/${projectVideos[0].id}/clips`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -87,6 +91,12 @@ export default function ProjectDetailPage() {
       await apiFetch(`/videos/${videos[0].id}/detect-hooks`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          min_duration: minDuration,
+          max_duration: maxDuration,
+          aspect_ratio: aspectRatio,
+          num_clips: numClips,
+        }),
       });
       await loadData();
     } catch (err) {
@@ -113,20 +123,75 @@ export default function ProjectDetailPage() {
         >
           ← Back to Dashboard
         </button>
-        <button
-          onClick={handleDetectHooks}
-          disabled={detecting || videos.length === 0}
-          className="rounded-lg bg-white text-black text-sm font-medium px-4 py-2 hover:bg-neutral-200 transition disabled:opacity-50"
-        >
-          {detecting ? "Analyzing transcript..." : "Run AI Hook Detection"}
-        </button>
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-10">
         <h1 className="text-2xl font-semibold mb-2">Generated Clips</h1>
-        <p className="text-neutral-500 text-sm mb-8">
+        <p className="text-neutral-500 text-sm mb-6">
           {clips.length} clip{clips.length !== 1 ? "s" : ""} generated, ranked by predicted virality
         </p>
+
+        {/* Clip generation settings */}
+        <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-5 mb-8">
+          <h2 className="text-sm font-medium mb-4 text-neutral-300">Clip Settings</h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
+            <div>
+              <label className="block text-xs text-neutral-500 mb-1">Min length (sec)</label>
+              <input
+                type="number"
+                min={5}
+                max={300}
+                value={minDuration}
+                onChange={(e) => setMinDuration(Number(e.target.value))}
+                className="w-full rounded-lg bg-neutral-900 border border-neutral-800 text-white px-3 py-2 text-sm outline-none focus:border-neutral-600"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-neutral-500 mb-1">Max length (sec)</label>
+              <input
+                type="number"
+                min={5}
+                max={300}
+                value={maxDuration}
+                onChange={(e) => setMaxDuration(Number(e.target.value))}
+                className="w-full rounded-lg bg-neutral-900 border border-neutral-800 text-white px-3 py-2 text-sm outline-none focus:border-neutral-600"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-neutral-500 mb-1">Aspect ratio</label>
+              <select
+                value={aspectRatio}
+                onChange={(e) => setAspectRatio(e.target.value)}
+                className="w-full rounded-lg bg-neutral-900 border border-neutral-800 text-white px-3 py-2 text-sm outline-none focus:border-neutral-600"
+              >
+                <option value="original">Original</option>
+                <option value="16:9">16:9 (Landscape)</option>
+                <option value="9:16">9:16 (Vertical)</option>
+                <option value="1:1">1:1 (Square)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-neutral-500 mb-1"># of clips</label>
+              <input
+                type="number"
+                min={1}
+                max={10}
+                value={numClips}
+                onChange={(e) => setNumClips(Number(e.target.value))}
+                className="w-full rounded-lg bg-neutral-900 border border-neutral-800 text-white px-3 py-2 text-sm outline-none focus:border-neutral-600"
+              />
+            </div>
+          </div>
+
+          <button
+            onClick={handleDetectHooks}
+            disabled={detecting || videos.length === 0}
+            className="rounded-lg bg-white text-black text-sm font-medium px-4 py-2 hover:bg-neutral-200 transition disabled:opacity-50"
+          >
+            {detecting ? "Analyzing transcript..." : "Run AI Hook Detection (1 credit)"}
+          </button>
+        </div>
 
         {error && (
           <p className="text-sm text-red-400 bg-red-950/40 border border-red-900 rounded-lg px-3 py-2 mb-6">
@@ -136,7 +201,7 @@ export default function ProjectDetailPage() {
 
         {clips.length === 0 ? (
           <div className="rounded-xl border border-dashed border-neutral-800 py-16 text-center text-neutral-500">
-            No clips yet. Click &quot;Run AI Hook Detection&quot; above once this video has a transcript.
+            No clips yet. Adjust settings above and click &quot;Run AI Hook Detection&quot;.
           </div>
         ) : (
           <div className="space-y-6">
