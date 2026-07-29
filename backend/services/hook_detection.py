@@ -13,7 +13,7 @@ HOOK_DETECTION_PROMPT_TEMPLATE = """You are an expert short-form video editor wh
 Analyze the following video transcript (with timestamps) and identify the {num_clips} best possible clips for short-form vertical video platforms.
 
 RULES:
-- Each clip must be between 60 and 120 seconds long.
+- Each clip must be between {min_duration} and {max_duration} seconds long.
 - Each clip must work as a STANDALONE piece of content — it needs a strong hook in its first 3 seconds, a clear payoff, and should not require outside context to make sense.
 - Prioritize moments with: strong emotion, a surprising claim, a clear before/after, a controversial or counter-intuitive statement, a concrete story with stakes, or a punchy one-line insight.
 - Do not choose overlapping time ranges.
@@ -42,20 +42,34 @@ Respond with ONLY a valid JSON array (no markdown, no explanation, no code fence
 ]"""
 
 
-def build_hook_detection_prompt(transcript: str, num_clips: int = 5) -> str:
-    return HOOK_DETECTION_PROMPT_TEMPLATE.format(transcript=transcript, num_clips=num_clips)
+def build_hook_detection_prompt(
+    transcript: str,
+    num_clips: int = 5,
+    min_duration: int = 60,
+    max_duration: int = 120,
+) -> str:
+    return HOOK_DETECTION_PROMPT_TEMPLATE.format(
+        transcript=transcript,
+        num_clips=num_clips,
+        min_duration=min_duration,
+        max_duration=max_duration,
+    )
 
 
-def detect_hooks(transcript: str, num_clips: int = 5, model: str = "claude-sonnet") -> list[dict]:
+def detect_hooks(
+    transcript: str,
+    num_clips: int = 5,
+    min_duration: int = 60,
+    max_duration: int = 120,
+    model: str = "claude-sonnet",
+) -> list[dict]:
     """
     Calls OpenRouter with the hook-detection prompt and parses the JSON response
     into a list of clip dictionaries, ready to save as Clip rows.
     """
-    prompt = build_hook_detection_prompt(transcript, num_clips)
+    prompt = build_hook_detection_prompt(transcript, num_clips, min_duration, max_duration)
     raw_response = call_openrouter(prompt, model=model)
 
-    # Models sometimes wrap JSON in markdown code fences despite instructions —
-    # strip those defensively before parsing.
     cleaned = raw_response.strip()
     if cleaned.startswith("```"):
         cleaned = cleaned.split("```")[1]

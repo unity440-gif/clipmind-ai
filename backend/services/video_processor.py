@@ -1,29 +1,30 @@
 """
 Video processing service — wraps FFmpeg commands.
-Currently handles audio extraction; will grow to handle clip cutting,
-reframing, and caption burning in later modules.
+Handles audio extraction, duration lookup, and clip cutting with
+optional aspect ratio cropping.
 """
 
 import subprocess
 from pathlib import Path
 
+# Maps a user-facing aspect ratio choice to the FFmpeg crop filter that
+# achieves it. "original" means no cropping at all.
+ASPECT_RATIO_FILTERS = {
+    "16:9": "crop='min(iw,ih*16/9)':'min(ih,iw*9/16)'",
+    "9:16": "crop='min(iw,ih*9/16)':'min(ih,iw*16/9)'",
+    "1:1": "crop='min(iw,ih)':'min(iw,ih)'",
+}
+
 
 def extract_audio(video_path: str, output_path: str) -> None:
-    """
-    Extracts the audio track from a video file and saves it as a .wav file
-    (the format Whisper expects).
-
-    Uses FFmpeg via subprocess rather than a Python wrapper library —
-    this keeps us in full control of exact FFmpeg flags and versions.
-    """
     command = [
         "ffmpeg",
-        "-i", video_path,       # input file
-        "-vn",                   # strip video stream — audio only
-        "-acodec", "pcm_s16le",  # standard uncompressed WAV format
-        "-ar", "16000",          # 16kHz sample rate — what Whisper expects
-        "-ac", "1",              # mono audio — smaller, and Whisper doesn't need stereo
-        "-y",                    # overwrite output file if it already exists
+        "-i", video_path,
+        "-vn",
+        "-acodec", "pcm_s16le",
+        "-ar", "16000",
+        "-ac", "1",
+        "-y",
         output_path,
     ]
 
@@ -34,10 +35,6 @@ def extract_audio(video_path: str, output_path: str) -> None:
 
 
 def get_video_duration_seconds(video_path: str) -> float:
-    """
-    Uses ffprobe (bundled with FFmpeg) to read a video's duration,
-    without extracting anything. Used to fill in Video.duration_seconds.
-    """
     command = [
         "ffprobe",
         "-v", "error",
@@ -52,24 +49,35 @@ def get_video_duration_seconds(video_path: str) -> float:
         raise RuntimeError(f"ffprobe failed: {result.stderr}")
 
     return float(result.stdout.strip())
-def cut_clip(source_video_path: str, output_path: str, start_seconds: float, end_seconds: float) -> None:
+
+
+def cut_clip(
+    source_video_path: str,
+    output_path: str,
+    start_seconds: float,
+    end_seconds: float,
+    aspect_ratio: str = "original",
+) -> None:
     """
     Cuts a segment out of a source video and saves it as its own file.
-    Uses stream copy when possible (fast, no re-encoding), falling back
-    to re-encoding only if needed for accuracy at the exact cut points.
+    Optionally crops to a target aspect ratio (16:9, 9:16, 1:1) — cropping
+    is centered, so it keeps the middle of the frame.
     """
     duration = end_seconds - start_seconds
 
     command = [
         "ffmpeg",
         "-i", source_video_path,
-        "-ss", str(start_seconds),   # start point
-        "-t", str(duration),          # how long to capture
-        "-c:v", "libx264",            # re-encode video for frame-accurate cuts
-        "-c:a", "aac",                # re-encode audio to a widely compatible codec
-        "-y",                          # overwrite if exists
-        output_path,
+        "-ss", str(start_seconds),
+        "-t", str(duration),
+        "-c:v", "libx264",
+        "-c:a", "aac",
     ]
+
+    if aspect_ratio in ASPECT_RATIO_FILTERS:
+        command.extend(["-vf", ASPECT_RATIO_FILTERS[aspect_ratio]])
+
+    command.extend(["-y", output_path])
 
     result = subprocess.run(command, capture_output=True, text=True)
 

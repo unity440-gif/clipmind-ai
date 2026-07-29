@@ -3,6 +3,7 @@ Clip routes.
 This is where AI hook-detection actually runs: given a video with a transcript,
 ask OpenRouter to identify the best clips and save them as Clip rows.
 Also triggers FFmpeg rendering of each clip in the background.
+Each successful hook-detection run costs the user 1 credit.
 """
 
 import uuid
@@ -15,22 +16,26 @@ from models.user import User
 from models.project import Project
 from models.video import Video
 from models.clip import Clip
-from schemas.clip import ClipResponse
+from schemas.clip import ClipResponse, HookDetectionRequest
 from services.hook_detection import detect_hooks
 from api.dependencies import get_current_user
 from workers.tasks import render_clip_task
 
 router = APIRouter(prefix="/videos", tags=["clips"])
 
+HOOK_DETECTION_COST = 1
+
 
 @router.post("/{video_id}/detect-hooks", response_model=list[ClipResponse])
 def run_hook_detection(
     video_id: uuid.UUID,
+    settings: HookDetectionRequest = HookDetectionRequest(),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
     Runs AI hook detection on a video's transcript and saves the results as Clips.
+    Costs 1 credit, only deducted after a successful AI response.
     Then triggers background rendering of each clip into its own video file.
     """
     video = (
@@ -48,10 +53,22 @@ def run_hook_detection(
             detail="This video has no transcript yet.",
         )
 
+    if current_user.credits_remaining < HOOK_DETECTION_COST:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=f"Not enough credits. This action costs {HOOK_DETECTION_COST} credit(s), "
+                   f"you have {current_user.credits_remaining}.",
+        )
+
     try:
         with open(video.transcript_path, "r") as f:
             transcript_text = f.read()
-        detected_clips = detect_hooks(transcript_text)
+        detected_clips = detect_hooks(
+            transcript_text,
+            num_clips=settings.num_clips,
+            min_duration=settings.min_duration,
+            max_duration=settings.max_duration,
+        )
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e))
 
@@ -60,6 +77,7 @@ def run_hook_detection(
         clip = Clip(
             id=uuid.uuid4(),
             video_id=video.id,
+            aspect_ratio=settings.aspect_ratio if settings.aspect_ratio != "original" else None,
             start_time_seconds=clip_data.get("start_time_seconds"),
             end_time_seconds=clip_data.get("end_time_seconds"),
             title=clip_data.get("title"),
@@ -77,7 +95,9 @@ def run_hook_detection(
         db.add(clip)
         saved_clips.append(clip)
 
+    current_user.credits_remaining -= HOOK_DETECTION_COST
     db.commit()
+
     for clip in saved_clips:
         db.refresh(clip)
         render_clip_task.delay(str(clip.id))

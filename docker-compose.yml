@@ -13,19 +13,7 @@ services:
       - db
       - redis
 
-  worker:
-    build: ./backend
-    container_name: clipmind-worker
-    command: python -m celery -A workers.celery_app worker --loglevel=info
 
-    volumes:
-      - ./backend:/app
-      - clipmind_uploads:/app/uploads
-    env_file:
-      - .env
-    depends_on:
-      - db
-      - redis
 
   db:
     image: postgres:16

@@ -1,10 +1,17 @@
 """
-Pydantic schemas for the Clip resource.
+Pydantic schemas for the Clip resource, and for the hook-detection request body.
 """
 
 import uuid
 
 from pydantic import BaseModel
+
+
+class HookDetectionRequest(BaseModel):
+    min_duration: int = 60
+    max_duration: int = 120
+    aspect_ratio: str = "original"  # "original" | "16:9" | "9:16" | "1:1"
+    num_clips: int = 5
 
 
 class ClipResponse(BaseModel):

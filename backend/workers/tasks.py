@@ -95,6 +95,7 @@ def render_clip_task(clip_id: str):
                 output_path=output_path,
                 start_seconds=clip.start_time_seconds,
                 end_seconds=clip.end_time_seconds,
+                aspect_ratio=clip.aspect_ratio or "original",
             )
 
             clip.storage_path = output_path
