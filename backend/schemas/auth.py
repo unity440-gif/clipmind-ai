@@ -36,3 +36,7 @@ class UserResponse(BaseModel):
         
 class GoogleLoginRequest(BaseModel):
     credential: str  # the ID token Google's sign-in button gives us
+
+class VerifyEmailRequest(BaseModel):
+    email: EmailStr
+    code: str

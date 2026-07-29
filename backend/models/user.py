@@ -26,6 +26,8 @@ class User(Base):
 
     is_email_verified = Column(Boolean, default=False, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
+    verification_code = Column(String, nullable=True)
+    verification_code_expires_at = Column(DateTime, nullable=True)
 
     # Credits system (Billing module) — how many clip-generation credits they have left
     credits_remaining = Column(Integer, default=10, nullable=False)
