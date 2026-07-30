@@ -3,11 +3,12 @@ Video model — represents one row in the "videos" table.
 This is the raw uploaded/downloaded source video that clips get cut from.
 One project has exactly one source video.
 """
-from sqlalchemy.orm import relationship
+
 import uuid
 from datetime import datetime
 
 from sqlalchemy import Column, String, DateTime, ForeignKey, Integer, Float
+from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 
 from database.session import Base
@@ -30,7 +31,9 @@ class Video(Base):
 
     # Where the generated transcript text will be stored (as JSON with timestamps)
     transcript_path = Column(String, nullable=True)
+    segments_path = Column(String, nullable=True)  # JSON file with word/segment-level timing, for captions
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
     project = relationship("Project", back_populates="videos")
     clips = relationship("Clip", back_populates="video", cascade="all, delete-orphan")

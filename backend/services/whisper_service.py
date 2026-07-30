@@ -1,17 +1,12 @@
 """
 Whisper transcription service.
 Uses faster-whisper (a fast CPU-friendly re-implementation of OpenAI's Whisper)
-to convert an audio file into a timestamped transcript.
+to convert an audio file into a timestamped transcript, and also returns
+segment-level timing data used later for burning captions onto clips.
 """
 
 from faster_whisper import WhisperModel
 
-# Loading the model is slow (a few seconds to a minute depending on size),
-# so we load it ONCE per worker process and reuse it for every job,
-# rather than reloading it on every single transcription.
-#
-# "base" is a good balance of speed vs accuracy for CPU-only environments.
-# Larger models (small/medium/large) are more accurate but much slower without a GPU.
 _model = None
 
 
@@ -22,23 +17,34 @@ def get_model() -> WhisperModel:
     return _model
 
 
-def transcribe_audio(audio_path: str) -> str:
+def transcribe_audio(audio_path: str) -> dict:
     """
-    Transcribes an audio file and returns a single string with
-    bracketed timestamps, e.g.:
-
-    [00:00] Hello and welcome to the show. [00:04] Today we're talking about...
-
-    This format matches exactly what our hook-detection prompt expects.
+    Transcribes an audio file. Returns a dict with:
+    - "text": the full transcript as a single string with [MM:SS] timestamps
+              (used by the hook-detection prompt)
+    - "segments": a list of {"start": float, "end": float, "text": str}
+                  (used later to burn captions onto individual clips)
     """
     model = get_model()
-    segments, _info = model.transcribe(audio_path, beam_size=5)
+    segments_iter, _info = model.transcribe(audio_path, beam_size=5)
 
     lines = []
-    for segment in segments:
+    segments = []
+
+    for segment in segments_iter:
         minutes = int(segment.start // 60)
         seconds = int(segment.start % 60)
         timestamp = f"[{minutes:02d}:{seconds:02d}]"
-        lines.append(f"{timestamp} {segment.text.strip()}")
+        text = segment.text.strip()
 
-    return " ".join(lines)
+        lines.append(f"{timestamp} {text}")
+        segments.append({
+            "start": segment.start,
+            "end": segment.end,
+            "text": text,
+        })
+
+    return {
+        "text": " ".join(lines),
+        "segments": segments,
+    }

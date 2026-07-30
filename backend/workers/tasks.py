@@ -4,6 +4,7 @@ Each function here runs asynchronously in a separate worker process,
 completely independent from the FastAPI web server.
 """
 
+import json
 from pathlib import Path
 
 from workers.celery_app import celery_app
@@ -41,16 +42,21 @@ def extract_audio_task(video_id: str):
             project.status = "transcribing"
             db.commit()
 
-            transcript_text = transcribe_audio(audio_path)
+            transcription_result = transcribe_audio(audio_path)
 
-            # Save the transcript as its own text file next to the video/audio,
-            # and store the FILE PATH (not the raw text) — matching how a real
-            # production system would handle potentially long transcripts.
+            # Save the flattened transcript text (used by hook detection)
             transcript_file_path = str(Path(video.storage_path).with_suffix(".txt"))
             with open(transcript_file_path, "w") as f:
-                f.write(transcript_text)
+                f.write(transcription_result["text"])
+
+            # Save the segment-level timing data separately as JSON
+            # (used later to burn synced captions onto individual clips)
+            segments_file_path = str(Path(video.storage_path).with_suffix(".segments.json"))
+            with open(segments_file_path, "w") as f:
+                json.dump(transcription_result["segments"], f)
 
             video.transcript_path = transcript_file_path
+            video.segments_path = segments_file_path
             project.status = "transcribed"
             db.commit()
 
