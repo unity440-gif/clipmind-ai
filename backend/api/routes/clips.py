@@ -2,8 +2,8 @@
 Clip routes.
 This is where AI hook-detection actually runs: given a video with a transcript,
 ask OpenRouter to identify the best clips and save them as Clip rows.
-Also triggers FFmpeg rendering of each clip in the background.
-Each successful hook-detection run costs the user 1 credit.
+Also triggers FFmpeg rendering of each clip in the background, and supports
+editing/re-rendering captions.
 """
 
 import uuid
@@ -16,8 +16,9 @@ from models.user import User
 from models.project import Project
 from models.video import Video
 from models.clip import Clip
-from schemas.clip import ClipResponse, HookDetectionRequest
+from schemas.clip import ClipResponse, HookDetectionRequest, UpdateCaptionsRequest
 from services.hook_detection import detect_hooks
+from services.subtitle_service import parse_srt_file, write_srt_file
 from api.dependencies import get_current_user
 from workers.tasks import render_clip_task
 
@@ -122,3 +123,76 @@ def list_clips(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Video not found.")
 
     return db.query(Clip).filter(Clip.video_id == video.id).order_by(Clip.virality_score.desc()).all()
+
+
+def _get_owned_clip(clip_id: uuid.UUID, current_user: User, db: Session) -> Clip:
+    clip = (
+        db.query(Clip)
+        .join(Video)
+        .join(Project)
+        .filter(Clip.id == clip_id, Project.user_id == current_user.id)
+        .first()
+    )
+    if not clip:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Clip not found.")
+    return clip
+
+
+@router.get("/clips/{clip_id}/captions")
+def get_clip_captions(
+    clip_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Returns a clip's captions as editable entries — from the custom edited
+    version if one exists, otherwise from the original auto-generated .srt.
+    """
+    clip = _get_owned_clip(clip_id, current_user, db)
+
+    path = clip.custom_captions_path or (
+        str(clip_id) and None
+    )
+    # Fall back to the auto-generated file, which uses the same naming
+    # convention as render_clip_task: uploads/clip_<id>.srt
+    if not path:
+        video = db.query(Video).filter(Video.id == clip.video_id).first()
+        from pathlib import Path
+        guessed_path = str(Path(video.storage_path).parent / f"clip_{clip.id}.srt")
+        path = guessed_path
+
+    if not path or not __import__("os").path.exists(path):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No captions found for this clip yet.")
+
+    return {"captions": parse_srt_file(path)}
+
+
+@router.put("/clips/{clip_id}/captions")
+def update_clip_captions(
+    clip_id: uuid.UUID,
+    payload: UpdateCaptionsRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Saves edited captions and triggers a re-render of the clip with the
+    corrected text burned in.
+    """
+    from pathlib import Path
+
+    clip = _get_owned_clip(clip_id, current_user, db)
+    video = db.query(Video).filter(Video.id == clip.video_id).first()
+
+    custom_path = str(Path(video.storage_path).parent / f"clip_{clip.id}_custom.srt")
+    write_srt_file(
+        [entry.model_dump() for entry in payload.captions],
+        custom_path,
+    )
+
+    clip.custom_captions_path = custom_path
+    clip.status = "rendering"
+    db.commit()
+
+    render_clip_task.delay(str(clip.id))
+
+    return {"success": True, "message": "Captions updated, re-rendering clip."}

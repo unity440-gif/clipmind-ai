@@ -42,7 +42,7 @@ class Clip(Base):
     storage_path = Column(String, nullable=True)
     aspect_ratio = Column(String, nullable=True)  # "16:9" | "9:16" | "1:1"
 
-    status = Column(String, default="pending", nullable=False)  # pending -> rendering -> completed -> failed
+    custom_captions_path = Column(String, nullable=True)  # set once user edits captions; overrides auto-generated ones
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     video = relationship("Video", back_populates="clips")

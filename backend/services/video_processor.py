@@ -1,14 +1,12 @@
 """
 Video processing service — wraps FFmpeg commands.
 Handles audio extraction, duration lookup, and clip cutting with
-optional aspect ratio cropping.
+optional aspect ratio cropping and burned-in captions.
 """
 
 import subprocess
 from pathlib import Path
 
-# Maps a user-facing aspect ratio choice to the FFmpeg crop filter that
-# achieves it. "original" means no cropping at all.
 ASPECT_RATIO_FILTERS = {
     "16:9": "crop='min(iw,ih*16/9)':'min(ih,iw*9/16)'",
     "9:16": "crop='min(iw,ih*9/16)':'min(ih,iw*16/9)'",
@@ -57,13 +55,26 @@ def cut_clip(
     start_seconds: float,
     end_seconds: float,
     aspect_ratio: str = "original",
+    subtitle_path: str | None = None,
 ) -> None:
     """
     Cuts a segment out of a source video and saves it as its own file.
-    Optionally crops to a target aspect ratio (16:9, 9:16, 1:1) — cropping
-    is centered, so it keeps the middle of the frame.
+    Optionally crops to a target aspect ratio, and optionally burns in
+    captions from a provided .srt file.
     """
     duration = end_seconds - start_seconds
+
+    video_filters = []
+    if aspect_ratio in ASPECT_RATIO_FILTERS:
+        video_filters.append(ASPECT_RATIO_FILTERS[aspect_ratio])
+
+    if subtitle_path:
+        # Style: white bold text, black outline, positioned near the bottom.
+        # FFmpeg's subtitles filter needs the path escaped carefully since
+        # colons and backslashes have special meaning inside filter strings.
+        escaped_path = subtitle_path.replace("\\", "\\\\").replace(":", "\\:")
+        style = "FontSize=14,PrimaryColour=&HFFFFFF,OutlineColour=&H000000,BorderStyle=1,Outline=2,Alignment=2"
+        video_filters.append(f"subtitles='{escaped_path}':force_style='{style}'")
 
     command = [
         "ffmpeg",
@@ -74,8 +85,8 @@ def cut_clip(
         "-c:a", "aac",
     ]
 
-    if aspect_ratio in ASPECT_RATIO_FILTERS:
-        command.extend(["-vf", ASPECT_RATIO_FILTERS[aspect_ratio]])
+    if video_filters:
+        command.extend(["-vf", ",".join(video_filters)])
 
     command.extend(["-y", output_path])
 

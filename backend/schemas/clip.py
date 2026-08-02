@@ -6,6 +6,15 @@ import uuid
 
 from pydantic import BaseModel
 
+class CaptionEntry(BaseModel):
+    index: int
+    start: float
+    end: float
+    text: str
+
+
+class UpdateCaptionsRequest(BaseModel):
+    captions: list[CaptionEntry]
 
 class HookDetectionRequest(BaseModel):
     min_duration: int = 60

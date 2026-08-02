@@ -14,6 +14,7 @@ from models.project import Project
 from models.clip import Clip
 from services.video_processor import extract_audio, get_video_duration_seconds, cut_clip
 from services.whisper_service import transcribe_audio
+from services.subtitle_service import generate_srt_for_clip
 
 
 @celery_app.task(name="extract_audio_task")
@@ -44,13 +45,10 @@ def extract_audio_task(video_id: str):
 
             transcription_result = transcribe_audio(audio_path)
 
-            # Save the flattened transcript text (used by hook detection)
             transcript_file_path = str(Path(video.storage_path).with_suffix(".txt"))
             with open(transcript_file_path, "w") as f:
                 f.write(transcription_result["text"])
 
-            # Save the segment-level timing data separately as JSON
-            # (used later to burn synced captions onto individual clips)
             segments_file_path = str(Path(video.storage_path).with_suffix(".segments.json"))
             with open(segments_file_path, "w") as f:
                 json.dump(transcription_result["segments"], f)
@@ -72,8 +70,9 @@ def extract_audio_task(video_id: str):
 @celery_app.task(name="render_clip_task")
 def render_clip_task(clip_id: str):
     """
-    Background job: cuts a single clip out of its source video using FFmpeg
-    and saves the resulting file, updating the clip's status as it progresses.
+    Background job: cuts a single clip out of its source video using FFmpeg,
+    burns in captions (preferring user-edited ones if they exist), and saves
+    the resulting file, updating the clip's status as it progresses.
     """
     db = SessionLocal()
     try:
@@ -96,12 +95,33 @@ def render_clip_task(clip_id: str):
             output_path = str(
                 Path(video.storage_path).parent / f"clip_{clip.id}.mp4"
             )
+
+            # Prefer the user's edited captions if they exist; otherwise
+            # generate fresh ones from Whisper's original segment timing.
+            if clip.custom_captions_path:
+                subtitle_path = clip.custom_captions_path
+            elif video.segments_path:
+                subtitle_path = str(
+                    Path(video.storage_path).parent / f"clip_{clip.id}.srt"
+                )
+                generate_srt_for_clip(
+                    segments_path=video.segments_path,
+                    clip_start=clip.start_time_seconds,
+                    clip_end=clip.end_time_seconds,
+                    output_srt_path=subtitle_path,
+                )
+            else:
+                subtitle_path = None
+
+            print(f"DEBUG: rendering clip {clip.id} with subtitle_path={subtitle_path}")
+
             cut_clip(
                 source_video_path=video.storage_path,
                 output_path=output_path,
                 start_seconds=clip.start_time_seconds,
                 end_seconds=clip.end_time_seconds,
                 aspect_ratio=clip.aspect_ratio or "original",
+                subtitle_path=subtitle_path,
             )
 
             clip.storage_path = output_path

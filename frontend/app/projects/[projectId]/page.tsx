@@ -33,6 +33,13 @@ interface Clip {
   status: string;
 }
 
+interface CaptionEntry {
+  index: number;
+  start: number;
+  end: number;
+  text: string;
+}
+
 export default function ProjectDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -44,11 +51,17 @@ export default function ProjectDetailPage() {
   const [detecting, setDetecting] = useState(false);
   const [error, setError] = useState("");
 
-  // Clip generation settings, picked by the user before running AI detection.
   const [minDuration, setMinDuration] = useState(60);
   const [maxDuration, setMaxDuration] = useState(120);
   const [aspectRatio, setAspectRatio] = useState("original");
   const [numClips, setNumClips] = useState(5);
+
+  // Caption editing state
+  const [editingClipId, setEditingClipId] = useState<string | null>(null);
+  const [captions, setCaptions] = useState<CaptionEntry[]>([]);
+  const [captionsLoading, setCaptionsLoading] = useState(false);
+  const [savingCaptions, setSavingCaptions] = useState(false);
+  const [captionError, setCaptionError] = useState("");
 
   async function loadData() {
     const token = getToken();
@@ -106,6 +119,50 @@ export default function ProjectDetailPage() {
     }
   }
 
+  async function openCaptionEditor(clipId: string) {
+    setEditingClipId(clipId);
+    setCaptionError("");
+    setCaptionsLoading(true);
+    try {
+      const token = getToken();
+      const data = await apiFetch(`/videos/clips/${clipId}/captions`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setCaptions(data.captions);
+    } catch (err) {
+      setCaptionError(err instanceof Error ? err.message : "Failed to load captions.");
+    } finally {
+      setCaptionsLoading(false);
+    }
+  }
+
+  function updateCaptionText(index: number, newText: string) {
+    setCaptions((prev) =>
+      prev.map((c) => (c.index === index ? { ...c, text: newText } : c))
+    );
+  }
+
+  async function handleSaveCaptions() {
+    if (!editingClipId) return;
+    setSavingCaptions(true);
+    setCaptionError("");
+
+    try {
+      const token = getToken();
+      await apiFetch(`/videos/clips/${editingClipId}/captions`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ captions }),
+      });
+      setEditingClipId(null);
+      await loadData();
+    } catch (err) {
+      setCaptionError(err instanceof Error ? err.message : "Failed to save captions.");
+    } finally {
+      setSavingCaptions(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center text-neutral-400">
@@ -131,7 +188,6 @@ export default function ProjectDetailPage() {
           {clips.length} clip{clips.length !== 1 ? "s" : ""} generated, ranked by predicted virality
         </p>
 
-        {/* Clip generation settings */}
         <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-5 mb-8">
           <h2 className="text-sm font-medium mb-4 text-neutral-300">Clip Settings</h2>
 
@@ -223,12 +279,21 @@ export default function ProjectDetailPage() {
                   <video
                     controls
                     className="w-full rounded-lg mb-4 bg-black"
-                    src={`${API_URL}/uploads/clip_${clip.id}.mp4`}
+                    src={`${API_URL}/uploads/clip_${clip.id}.mp4?t=${Date.now()}`}
                   />
                 ) : (
                   <div className="w-full rounded-lg mb-4 bg-neutral-900 border border-neutral-800 py-8 text-center text-sm text-neutral-500">
                     {clip.status === "failed" ? "Rendering failed" : "Rendering video..."}
                   </div>
+                )}
+
+                {clip.status === "completed" && (
+                  <button
+                    onClick={() => openCaptionEditor(clip.id)}
+                    className="text-xs text-neutral-400 hover:text-white transition mb-4 underline"
+                  >
+                    Edit captions
+                  </button>
                 )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
@@ -256,6 +321,61 @@ export default function ProjectDetailPage() {
           </div>
         )}
       </main>
+
+      {/* Caption editor modal */}
+      {editingClipId && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center px-4 z-50">
+          <div className="bg-neutral-950 border border-neutral-800 rounded-xl w-full max-w-lg max-h-[80vh] flex flex-col">
+            <div className="p-5 border-b border-neutral-800 flex items-center justify-between">
+              <h3 className="font-medium">Edit Captions</h3>
+              <button
+                onClick={() => setEditingClipId(null)}
+                className="text-neutral-500 hover:text-white transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-5 overflow-y-auto flex-1 space-y-3">
+              {captionsLoading ? (
+                <p className="text-sm text-neutral-500">Loading captions...</p>
+              ) : captionError ? (
+                <p className="text-sm text-red-400">{captionError}</p>
+              ) : (
+                captions.map((c) => (
+                  <div key={c.index}>
+                    <p className="text-xs text-neutral-600 mb-1">
+                      {c.start.toFixed(1)}s – {c.end.toFixed(1)}s
+                    </p>
+                    <input
+                      type="text"
+                      value={c.text}
+                      onChange={(e) => updateCaptionText(c.index, e.target.value)}
+                      className="w-full rounded-lg bg-neutral-900 border border-neutral-800 text-white px-3 py-2 text-sm outline-none focus:border-neutral-600"
+                    />
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="p-5 border-t border-neutral-800 flex gap-3">
+              <button
+                onClick={handleSaveCaptions}
+                disabled={savingCaptions || captionsLoading}
+                className="rounded-lg bg-white text-black text-sm font-medium px-4 py-2 hover:bg-neutral-200 transition disabled:opacity-50"
+              >
+                {savingCaptions ? "Saving & re-rendering..." : "Save & Re-render"}
+              </button>
+              <button
+                onClick={() => setEditingClipId(null)}
+                className="text-sm text-neutral-400 hover:text-white transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
