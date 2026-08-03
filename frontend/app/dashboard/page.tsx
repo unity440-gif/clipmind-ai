@@ -111,6 +111,12 @@ export default function DashboardPage() {
           >
             {"+ New Project"}
           </button>
+          <button
+            onClick={() => router.push("/generate-image")}
+            className="rounded-lg bg-neutral-800 text-white text-sm font-medium px-4 py-2 hover:bg-neutral-700 transition ml-2"
+          >
+            Generate Image
+          </button>
         </div>
 
         {projects.length === 0 ? (
