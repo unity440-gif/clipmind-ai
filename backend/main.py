@@ -9,6 +9,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from api.routes import images
 
 from config.settings import settings
 from api.routes import health
@@ -43,7 +44,7 @@ app.include_router(projects.router)
 app.include_router(videos.router)
 app.include_router(clips.router)
 app.include_router(ai_test.router)
-
+app.include_router(images.router)
 
 @app.get("/")
 def root():
