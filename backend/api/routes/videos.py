@@ -1,7 +1,8 @@
 """
 Video routes.
 Handles uploading a raw video file OR downloading one from a YouTube URL
-into an existing project. Large files use chunked upload to avoid
+into an existing project. Files are stored in Cloudflare R2, not local
+disk, so they survive redeploys. Large files use chunked upload to avoid
 hitting Railway's ~5 minute hard HTTP timeout on a single request.
 """
 
@@ -22,6 +23,7 @@ from schemas.video import VideoResponse, InitUploadRequest, InitUploadResponse, 
 from api.dependencies import get_current_user
 from workers.tasks import extract_audio_task
 from services.youtube_downloader import download_youtube_video
+from services.storage_service import upload_file, delete_file
 
 router = APIRouter(prefix="/projects", tags=["videos"])
 
@@ -39,6 +41,7 @@ async def upload_video(
 ):
     """
     Direct (non-chunked) upload — still used for smaller files.
+    Saves temporarily to local disk, uploads to R2, then removes the local copy.
     """
     project = (
         db.query(Project)
@@ -46,10 +49,7 @@ async def upload_video(
         .first()
     )
     if not project:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Project not found.",
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found.")
 
     original_extension = Path(file.filename).suffix.lower()
     if original_extension not in settings.ALLOWED_VIDEO_EXTENSIONS:
@@ -61,28 +61,32 @@ async def upload_video(
     video_id = uuid.uuid4()
     upload_dir = Path(settings.UPLOAD_DIR)
     upload_dir.mkdir(parents=True, exist_ok=True)
-    saved_path = upload_dir / f"{video_id}{original_extension}"
+    local_path = upload_dir / f"{video_id}{original_extension}"
 
     total_size = 0
     chunk_size = 1024 * 1024
 
-    with open(saved_path, "wb") as buffer:
+    with open(local_path, "wb") as buffer:
         while chunk := await file.read(chunk_size):
             total_size += len(chunk)
             if total_size > settings.MAX_UPLOAD_SIZE_BYTES:
                 buffer.close()
-                os.remove(saved_path)
+                os.remove(local_path)
                 raise HTTPException(
                     status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                     detail="File exceeds the 5GB upload limit.",
                 )
             buffer.write(chunk)
 
+    r2_key = f"videos/{video_id}{original_extension}"
+    upload_file(str(local_path), r2_key)
+    os.remove(local_path)  # clean up local scratch copy now that it's safely in R2
+
     video = Video(
         id=video_id,
         project_id=project.id,
         original_filename=file.filename,
-        storage_path=str(saved_path),
+        storage_path=r2_key,
         file_size_bytes=total_size,
     )
     db.add(video)
@@ -102,11 +106,6 @@ def init_chunked_upload(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Starts a chunked upload session. Validates the file extension and size
-    up front, creates a temporary folder to hold incoming chunks, and
-    returns a unique upload_id the frontend will use for every chunk it sends.
-    """
     project = (
         db.query(Project)
         .filter(Project.id == project_id, Project.user_id == current_user.id)
@@ -145,8 +144,9 @@ async def upload_chunk(
     db: Session = Depends(get_db),
 ):
     """
-    Receives a single chunk of a file and saves it to the upload session's
-    temporary folder, named by its index so chunks can be reassembled in order.
+    Chunks are still assembled on local disk temporarily (this is scratch
+    space, not the final destination) — only the finished, reassembled
+    video gets uploaded to R2, in complete_chunked_upload below.
     """
     project = (
         db.query(Project)
@@ -176,9 +176,8 @@ def complete_chunked_upload(
     db: Session = Depends(get_db),
 ):
     """
-    Reassembles all uploaded chunks into the final video file, in order,
-    then creates the Video row and kicks off the normal processing pipeline
-    exactly like a direct upload would.
+    Reassembles chunks into a local temp file, uploads that final file to
+    R2, then deletes the local scratch copy.
     """
     project = (
         db.query(Project)
@@ -198,10 +197,10 @@ def complete_chunked_upload(
 
     video_id = uuid.uuid4()
     extension = Path(payload.filename).suffix.lower()
-    final_path = Path(settings.UPLOAD_DIR) / f"{video_id}{extension}"
+    local_path = Path(settings.UPLOAD_DIR) / f"{video_id}{extension}"
 
     total_size = 0
-    with open(final_path, "wb") as final_file:
+    with open(local_path, "wb") as final_file:
         for chunk_file in chunk_files:
             with open(chunk_file, "rb") as cf:
                 data = cf.read()
@@ -210,11 +209,15 @@ def complete_chunked_upload(
 
     shutil.rmtree(chunk_dir)
 
+    r2_key = f"videos/{video_id}{extension}"
+    upload_file(str(local_path), r2_key)
+    os.remove(local_path)
+
     video = Video(
         id=video_id,
         project_id=project.id,
         original_filename=payload.filename,
-        storage_path=str(final_path),
+        storage_path=r2_key,
         file_size_bytes=total_size,
     )
     db.add(video)
@@ -256,11 +259,17 @@ def add_video_from_youtube(
             detail=f"Failed to download YouTube video: {e}",
         )
 
+    local_path = result["storage_path"]
+    extension = Path(local_path).suffix
+    r2_key = f"videos/{video_id}{extension}"
+    upload_file(local_path, r2_key)
+    os.remove(local_path)
+
     video = Video(
         id=video_id,
         project_id=project.id,
         original_filename=result["original_filename"],
-        storage_path=result["storage_path"],
+        storage_path=r2_key,
         file_size_bytes=result["file_size_bytes"],
     )
     db.add(video)
@@ -290,11 +299,15 @@ def set_test_transcript(
     if not video:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Video not found.")
 
-    transcript_file_path = str(Path(video.storage_path).with_suffix(".txt"))
-    with open(transcript_file_path, "w") as f:
+    local_temp = Path(settings.UPLOAD_DIR) / f"{video_id}_test_transcript.txt"
+    with open(local_temp, "w") as f:
         f.write(transcript)
 
-    video.transcript_path = transcript_file_path
+    r2_key = f"transcripts/{video_id}.txt"
+    upload_file(str(local_temp), r2_key)
+    os.remove(local_temp)
+
+    video.transcript_path = r2_key
     db.commit()
 
     return {"success": True}

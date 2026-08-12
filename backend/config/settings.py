@@ -13,27 +13,40 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"  # development | staging | production
     DEBUG: bool = True
 
-    # Will be used starting Module 3 (Database)
+    # Database
     DATABASE_URL: str = "postgresql://clipmind:clipmind@db:5432/clipmind"
 
-    # Will be used starting Module for Celery/Redis
+    # Redis / Celery
     REDIS_URL: str = "redis://redis:6379/0"
-    JWT_SECRET: str = "changeme-dev-only-secret"
-    OPENROUTER_API_KEY: str = ""
-    GOOGLE_CLIENT_ID: str = ""
-    RESEND_API_KEY: str = ""
 
-    MAX_UPLOAD_SIZE_BYTES: int = 5 * 1024 * 1024 * 1024  # 5GB, per your spec
+    # Auth
+    JWT_SECRET: str = "changeme-dev-only-secret"
+
+    # Uploads
+    MAX_UPLOAD_SIZE_BYTES: int = 5 * 1024 * 1024 * 1024  # 5GB
     ALLOWED_VIDEO_EXTENSIONS: tuple = (".mp4", ".mov", ".avi", ".mkv")
     UPLOAD_DIR: str = "uploads"
 
+    # OpenRouter (AI)
+    OPENROUTER_API_KEY: str = ""
+
+    # Google OAuth
+    GOOGLE_CLIENT_ID: str = ""
+
+    # Resend (email)
+    RESEND_API_KEY: str = ""
+
+    # Cloudflare R2 (persistent file storage)
+    R2_ACCOUNT_ID: str = ""
+    R2_ACCESS_KEY_ID: str = ""
+    R2_SECRET_ACCESS_KEY: str = ""
+    R2_BUCKET_NAME: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        extra="ignore",  # ignore unrelated env vars instead of crashing
+        extra="ignore",
     )
 
 
-# Singleton instance imported everywhere else in the app
 settings = Settings()

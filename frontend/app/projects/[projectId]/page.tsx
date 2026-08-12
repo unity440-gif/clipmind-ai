@@ -5,8 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import { getToken } from "@/lib/auth";
 import { apiFetch } from "@/lib/api";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
 interface Video {
   id: string;
   project_id: string;
@@ -47,6 +45,7 @@ export default function ProjectDetailPage() {
 
   const [videos, setVideos] = useState<Video[]>([]);
   const [clips, setClips] = useState<Clip[]>([]);
+  const [clipUrls, setClipUrls] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [detecting, setDetecting] = useState(false);
   const [error, setError] = useState("");
@@ -56,7 +55,6 @@ export default function ProjectDetailPage() {
   const [aspectRatio, setAspectRatio] = useState("original");
   const [numClips, setNumClips] = useState(5);
 
-  // Caption editing state
   const [editingClipId, setEditingClipId] = useState<string | null>(null);
   const [captions, setCaptions] = useState<CaptionEntry[]>([]);
   const [captionsLoading, setCaptionsLoading] = useState(false);
@@ -81,6 +79,24 @@ export default function ProjectDetailPage() {
           headers: { Authorization: `Bearer ${token}` },
         });
         setClips(videoClips);
+
+        // For every completed clip, fetch its real, temporary R2 video URL
+        const urls: Record<string, string> = {};
+        await Promise.all(
+          videoClips
+            .filter((c: Clip) => c.status === "completed")
+            .map(async (c: Clip) => {
+              try {
+                const data = await apiFetch(`/videos/clip-url/${c.id}`, {
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                urls[c.id] = data.url;
+              } catch {
+                // if a single clip's URL fails, just skip it silently
+              }
+            })
+        );
+        setClipUrls(urls);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load project.");
@@ -275,11 +291,11 @@ export default function ProjectDetailPage() {
 
                 <p className="text-sm text-neutral-400 mb-4">{clip.summary}</p>
 
-                {clip.status === "completed" ? (
+                {clip.status === "completed" && clipUrls[clip.id] ? (
                   <video
                     controls
                     className="w-full rounded-lg mb-4 bg-black"
-                    src={`${API_URL}/uploads/clip_${clip.id}.mp4?t=${Date.now()}`}
+                    src={clipUrls[clip.id]}
                   />
                 ) : (
                   <div className="w-full rounded-lg mb-4 bg-neutral-900 border border-neutral-800 py-8 text-center text-sm text-neutral-500">
@@ -322,7 +338,6 @@ export default function ProjectDetailPage() {
         )}
       </main>
 
-      {/* Caption editor modal */}
       {editingClipId && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center px-4 z-50">
           <div className="bg-neutral-950 border border-neutral-800 rounded-xl w-full max-w-lg max-h-[80vh] flex flex-col">
