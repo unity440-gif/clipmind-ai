@@ -105,18 +105,26 @@ export default function DashboardPage() {
       <main className="max-w-5xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold">Your Projects</h2>
-          <button
-            onClick={() => router.push("/upload")}
-            className="rounded-lg bg-white text-black text-sm font-medium px-4 py-2 hover:bg-neutral-200 transition"
-          >
-            {"+ New Project"}
-          </button>
-          <button
-            onClick={() => router.push("/generate-image")}
-            className="rounded-lg bg-neutral-800 text-white text-sm font-medium px-4 py-2 hover:bg-neutral-700 transition ml-2"
-          >
-            Generate Image
-          </button>
+          <div>
+            <button
+              onClick={() => router.push("/upload")}
+              className="rounded-lg bg-white text-black text-sm font-medium px-4 py-2 hover:bg-neutral-200 transition"
+            >
+              {"+ New Project"}
+            </button>
+            <button
+              onClick={() => router.push("/generate-image")}
+              className="rounded-lg bg-neutral-800 text-white text-sm font-medium px-4 py-2 hover:bg-neutral-700 transition ml-2"
+            >
+              Generate Image
+            </button>
+            <button
+              onClick={() => router.push("/text-to-speech")}
+              className="rounded-lg bg-neutral-800 text-white text-sm font-medium px-4 py-2 hover:bg-neutral-700 transition ml-2"
+            >
+              Text to Speech
+            </button>
+          </div>
         </div>
 
         {projects.length === 0 ? (

@@ -1,7 +1,7 @@
 """
 Text-to-speech service using OpenRouter's dedicated Audio Speech API.
-Uses Fish Audio's free-tier model. Supports picking from a small set of
-known public voice IDs, or the provider's default if none is specified.
+Uses Fish Audio's free-tier model, with a curated set of real public
+voice IDs from Fish Audio's own voice library.
 """
 
 import uuid
@@ -15,16 +15,22 @@ OPENROUTER_SPEECH_URL = "https://openrouter.ai/api/v1/audio/speech"
 
 TTS_MODEL = "fish-audio/s2.1-pro-free:free"
 
-# Known public voice reference IDs from Fish Audio's own voice library.
-# "default" means: omit the voice parameter entirely, letting the
-# provider pick its own default voice.
 NARRATOR_VOICES = {
-    "default": None,
-    "narrator-2": "933563129e564b19a115bedd57b7406a",
+    "adrian": "bf322df2096a46f18c579d0baa36f41d",       # male
+    "laura": "e3cd384158934cc9a01029cd7d278634",         # female
+    "ethan": "536d3a5e000945adb7038665781a4aca",         # male
+    "male-child": "d4708472472c406286f5ba27cc4ac1d7",
+    "female-child": "0c0f9d7d87e44e2dabb53ebb092f5f53",
+    "story-narrator": "85f74fd86bee4150a3696e691e773081",
 }
 
 
 def generate_speech(text: str, voice: str | None = None) -> dict:
+    """
+    Generates speech audio from text using one of the curated narrator voices.
+    If no voice is specified (or an unknown one is given), the provider's
+    own default voice is used instead.
+    """
     headers = {
         "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
