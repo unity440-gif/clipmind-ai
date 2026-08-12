@@ -6,6 +6,7 @@ import { getToken } from "@/lib/auth";
 import { apiFetch } from "@/lib/api";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB per chunk — safely under Railway's timeout
 
 export default function UploadPage() {
   const router = useRouter();
@@ -18,6 +19,7 @@ export default function UploadPage() {
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [statusText, setStatusText] = useState("");
   const [error, setError] = useState("");
 
   function handleDrop(e: React.DragEvent) {
@@ -25,6 +27,51 @@ export default function UploadPage() {
     setDragActive(false);
     const dropped = e.dataTransfer.files?.[0];
     if (dropped) setFile(dropped);
+  }
+
+  async function uploadInChunks(projectId: string, file: File, token: string | null) {
+    // Step 1: tell the backend we're starting a chunked upload
+    const initData = await apiFetch(`/projects/${projectId}/videos/init-upload`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ filename: file.name, total_size: file.size }),
+    });
+
+    const uploadId = initData.upload_id;
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+
+    // Step 2: upload each chunk one at a time, in order
+    for (let i = 0; i < totalChunks; i++) {
+      const start = i * CHUNK_SIZE;
+      const end = Math.min(start + CHUNK_SIZE, file.size);
+      const chunkBlob = file.slice(start, end);
+
+      const formData = new FormData();
+      formData.append("upload_id", uploadId);
+      formData.append("chunk_index", String(i));
+      formData.append("file", chunkBlob);
+
+      const response = await fetch(`${API_URL}/projects/${projectId}/videos/upload-chunk`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Chunk ${i + 1} of ${totalChunks} failed to upload.`);
+      }
+
+      setProgress(Math.round(((i + 1) / totalChunks) * 100));
+      setStatusText(`Uploading chunk ${i + 1} of ${totalChunks}...`);
+    }
+
+    // Step 3: tell the backend to reassemble the chunks into the final file
+    setStatusText("Finalizing upload...");
+    await apiFetch(`/projects/${projectId}/videos/complete-upload`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ upload_id: uploadId, filename: file.name }),
+    });
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -59,28 +106,9 @@ export default function UploadPage() {
           headers: { Authorization: `Bearer ${token}` },
         });
       } else {
-        await new Promise<void>((resolve, reject) => {
-          const formData = new FormData();
-          formData.append("file", file as File);
-
-          const xhr = new XMLHttpRequest();
-          xhr.open("POST", `${API_URL}/projects/${project.id}/videos`);
-          xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-
-          xhr.upload.onprogress = (event) => {
-            if (event.lengthComputable) {
-              setProgress(Math.round((event.loaded / event.total) * 100));
-            }
-          };
-
-          xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) resolve();
-            else reject(new Error("Upload failed."));
-          };
-          xhr.onerror = () => reject(new Error("Upload failed."));
-
-          xhr.send(formData);
-        });
+        // Always use chunked upload — safe and reliable for any file size,
+        // small or large, since each individual request stays small.
+        await uploadInChunks(project.id, file as File, token);
       }
 
       router.push("/dashboard");
@@ -153,7 +181,9 @@ export default function UploadPage() {
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               />
               {file ? (
-                <p className="text-neutral-300">{file.name}</p>
+                <p className="text-neutral-300">
+                  {file.name} ({(file.size / (1024 * 1024)).toFixed(0)} MB)
+                </p>
               ) : (
                 <>
                   <p className="text-neutral-400">Drag and drop a video here</p>
@@ -177,11 +207,14 @@ export default function UploadPage() {
           )}
 
           {uploading && mode === "file" && (
-            <div className="w-full bg-neutral-900 rounded-full h-2 overflow-hidden">
-              <div
-                className="bg-white h-full transition-all"
-                style={{ width: `${progress}%` }}
-              />
+            <div>
+              <div className="w-full bg-neutral-900 rounded-full h-2 overflow-hidden mb-1">
+                <div
+                  className="bg-white h-full transition-all"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <p className="text-xs text-neutral-500">{statusText}</p>
             </div>
           )}
 

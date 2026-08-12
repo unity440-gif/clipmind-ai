@@ -1,5 +1,5 @@
 """
-Pydantic schemas for the Video resource.
+Pydantic schemas for the Video resource, including chunked upload support.
 """
 
 import uuid
@@ -17,3 +17,17 @@ class VideoResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class InitUploadRequest(BaseModel):
+    filename: str
+    total_size: int
+
+
+class InitUploadResponse(BaseModel):
+    upload_id: str
+
+
+class CompleteUploadRequest(BaseModel):
+    upload_id: str
+    filename: str
