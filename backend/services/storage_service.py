@@ -7,10 +7,16 @@ Files persist across every deploy/restart, unlike local container disk.
 
 import boto3
 from botocore.client import Config
+from boto3.s3.transfer import TransferConfig
 
 from config.settings import settings
 
 _client = None
+
+# Force simple single-part uploads instead of multipart — some R2 API
+# tokens have a permissions bug specifically on CreateMultipartUpload
+# even when otherwise correctly scoped for read/write.
+_UPLOAD_CONFIG = TransferConfig(multipart_threshold=1024 * 1024 * 1024 * 5)  # 5GB
 
 
 def get_client():
@@ -34,7 +40,7 @@ def upload_file(local_path: str, key: str) -> str:
     in the database as the file's "storage_path" going forward.
     """
     client = get_client()
-    client.upload_file(local_path, settings.R2_BUCKET_NAME, key)
+    client.upload_file(local_path, settings.R2_BUCKET_NAME, key, Config=_UPLOAD_CONFIG)
     return key
 
 
