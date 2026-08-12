@@ -15,6 +15,7 @@ from api.routes import videos
 from api.routes import clips
 from api.routes import ai_test
 from api.routes import images
+from api.routes import tts
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -42,6 +43,7 @@ app.include_router(videos.router)
 app.include_router(clips.router)
 app.include_router(ai_test.router)
 app.include_router(images.router)
+app.include_router(tts.router)
 
 
 @app.get("/")
