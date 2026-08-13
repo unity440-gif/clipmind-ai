@@ -1,16 +1,19 @@
 """
 Text-to-speech routes.
-Lets a logged-in user generate speech audio from text using the provider's
-default voice. Costs 1 credit per generation, only deducted on success.
+Lets a logged-in user generate speech audio from text using a chosen
+narrator voice. Costs 1 credit per generation, only deducted on success.
+Every generation is saved to history.
 """
 
 import os
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from database.session import get_db
 from models.user import User
+from models.generated_media import GeneratedMedia
 from schemas.tts import GenerateSpeechRequest, GenerateSpeechResponse
 from services.tts_service import generate_speech
 from services.storage_service import upload_file, get_public_url
@@ -48,6 +51,16 @@ def create_speech(
     os.remove(result["storage_path"])
 
     current_user.credits_remaining -= TTS_COST
+
+    history_entry = GeneratedMedia(
+        id=uuid.uuid4(),
+        user_id=current_user.id,
+        media_type="speech",
+        prompt_or_text=payload.text,
+        voice=payload.voice,
+        storage_path=r2_key,
+    )
+    db.add(history_entry)
     db.commit()
 
     return GenerateSpeechResponse(

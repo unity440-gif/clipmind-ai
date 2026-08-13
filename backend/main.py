@@ -16,6 +16,8 @@ from api.routes import clips
 from api.routes import ai_test
 from api.routes import images
 from api.routes import tts
+from api.routes import history
+from api.routes import reformat
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -33,9 +35,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Files (videos, clips, transcripts, images) now live in Cloudflare R2,
-# not on local disk — so we no longer mount a local /uploads folder here.
-
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(projects.router)
@@ -44,6 +43,8 @@ app.include_router(clips.router)
 app.include_router(ai_test.router)
 app.include_router(images.router)
 app.include_router(tts.router)
+app.include_router(history.router)
+app.include_router(reformat.router)
 
 
 @app.get("/")

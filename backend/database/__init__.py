@@ -7,3 +7,4 @@ from models.user import User
 from models.project import Project
 from models.video import Video
 from models.clip import Clip
+from models.generated_media import GeneratedMedia
