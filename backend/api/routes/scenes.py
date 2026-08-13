@@ -18,6 +18,7 @@ from schemas.scene import CreateScriptProjectRequest, ScriptProjectResponse, Sce
 from services.storage_service import get_public_url
 from api.dependencies import get_current_user
 from workers.tasks import process_script_task
+from workers.tasks import compile_script_video_task
 
 router = APIRouter(prefix="/scripts", tags=["scenes"])
 
@@ -97,4 +98,30 @@ def get_script_project(
     )
     if not project:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Script project not found.")
+    return _to_response(project)
+@router.post("/{project_id}/compile", response_model=ScriptProjectResponse)
+def compile_video(
+    project_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Triggers compilation of all completed scenes into one final video.
+    """
+    project = (
+        db.query(ScriptProject)
+        .filter(ScriptProject.id == project_id, ScriptProject.user_id == current_user.id)
+        .first()
+    )
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Script project not found.")
+
+    if project.status != "scenes_ready":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Project must be in 'scenes_ready' status to compile. Current status: {project.status}",
+        )
+
+    compile_script_video_task.delay(str(project.id))
+
     return _to_response(project)

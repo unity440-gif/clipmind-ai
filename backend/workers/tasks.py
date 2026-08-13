@@ -25,6 +25,7 @@ from services.storage_service import upload_file, download_file
 from services.scene_breakdown_service import break_down_script
 from services.image_generation_service import generate_image
 from services.tts_service import generate_speech
+from services.video_compiler_service import create_scene_clip, concatenate_clips
 
 LOCAL_SCRATCH_DIR = Path("uploads")
 
@@ -270,6 +271,77 @@ def generate_scene_assets_task(scene_id: str):
         if all(s.status in ("completed", "failed") for s in all_scenes):
             project.status = "scenes_ready"
             db.commit()
+
+    finally:
+        db.close()
+
+
+@celery_app.task(name="compile_script_video_task")
+def compile_script_video_task(script_project_id: str):
+    """
+    Background job: downloads every scene's image + audio, creates a
+    Ken-Burns-style clip for each, concatenates them into one final video,
+    and uploads it to R2.
+    """
+    db = SessionLocal()
+    try:
+        project = db.query(ScriptProject).filter(ScriptProject.id == script_project_id).first()
+        if not project:
+            return
+
+        scenes = (
+            db.query(Scene)
+            .filter(Scene.script_project_id == project.id, Scene.status == "completed")
+            .order_by(Scene.scene_number)
+            .all()
+        )
+
+        LOCAL_SCRATCH_DIR.mkdir(parents=True, exist_ok=True)
+        scene_clip_paths = []
+
+        try:
+            project.status = "compiling_video"
+            db.commit()
+
+            for scene in scenes:
+                local_image = LOCAL_SCRATCH_DIR / f"compile_{scene.id}_img.png"
+                local_audio = LOCAL_SCRATCH_DIR / f"compile_{scene.id}_aud.mp3"
+                local_clip = LOCAL_SCRATCH_DIR / f"compile_{scene.id}_clip.mp4"
+
+                download_file(scene.image_path, str(local_image))
+                download_file(scene.audio_path, str(local_audio))
+
+                create_scene_clip(str(local_image), str(local_audio), str(local_clip))
+                scene_clip_paths.append(str(local_clip))
+
+                os.remove(local_image)
+                os.remove(local_audio)
+
+            final_output = LOCAL_SCRATCH_DIR / f"compiled_{project.id}.mp4"
+            concatenate_clips(scene_clip_paths, str(final_output))
+
+            r2_key = f"compiled/{project.id}.mp4"
+            upload_file(str(final_output), r2_key)
+
+            project.compiled_video_path = r2_key
+            project.status = "completed"
+            db.commit()
+
+        except Exception as e:
+            project.status = "failed"
+            db.commit()
+            raise e
+
+        finally:
+            for path in scene_clip_paths:
+                if Path(path).exists():
+                    os.remove(path)
+            final_output = LOCAL_SCRATCH_DIR / f"compiled_{project.id}.mp4"
+            if final_output.exists():
+                os.remove(final_output)
+            concat_list = LOCAL_SCRATCH_DIR / f"compiled_{project.id}.txt"
+            if concat_list.exists():
+                os.remove(concat_list)
 
     finally:
         db.close()
