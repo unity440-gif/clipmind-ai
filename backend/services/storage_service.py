@@ -11,8 +11,6 @@ from boto3.s3.transfer import TransferConfig
 
 from config.settings import settings
 
-_client = None
-
 # Force simple single-part uploads instead of multipart — some R2 API
 # tokens have a permissions bug specifically on CreateMultipartUpload
 # even when otherwise correctly scoped for read/write.
@@ -20,17 +18,19 @@ _UPLOAD_CONFIG = TransferConfig(multipart_threshold=1024 * 1024 * 1024 * 5)  # 5
 
 
 def get_client():
-    global _client
-    if _client is None:
-        _client = boto3.client(
-            "s3",
-            endpoint_url=f"https://{settings.R2_ACCOUNT_ID}.r2.cloudflarestorage.com",
-            aws_access_key_id=settings.R2_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.R2_SECRET_ACCESS_KEY,
-            config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
-            region_name="auto",
-        )
-    return _client
+    """
+    Creates a fresh R2 client on every call — deliberately not cached,
+    to avoid any risk of a stale client persisting from an earlier
+    environment/config state within a long-running process.
+    """
+    return boto3.client(
+        "s3",
+        endpoint_url=f"https://{settings.R2_ACCOUNT_ID}.r2.cloudflarestorage.com",
+        aws_access_key_id=settings.R2_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.R2_SECRET_ACCESS_KEY,
+        config=Config(signature_version="s3v4", s3={"addressing_style": "path"}),
+        region_name="auto",
+    )
 
 
 def upload_file(local_path: str, key: str) -> str:
