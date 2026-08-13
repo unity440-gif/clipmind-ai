@@ -18,6 +18,7 @@ from api.routes import images
 from api.routes import tts
 from api.routes import history
 from api.routes import reformat
+from api.routes import scenes
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -45,6 +46,7 @@ app.include_router(images.router)
 app.include_router(tts.router)
 app.include_router(history.router)
 app.include_router(reformat.router)
+app.include_router(scenes.router)
 
 
 @app.get("/")

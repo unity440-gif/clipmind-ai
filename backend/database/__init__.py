@@ -8,3 +8,5 @@ from models.project import Project
 from models.video import Video
 from models.clip import Clip
 from models.generated_media import GeneratedMedia
+from models.scene_project import ScriptProject
+from models.scene import Scene
