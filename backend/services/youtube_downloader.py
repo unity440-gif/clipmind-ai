@@ -2,10 +2,10 @@
 YouTube downloader service using yt-dlp.
 Downloads a YouTube video to local storage, returning the same kind of
 metadata our upload flow produces — so both paths feed the same pipeline.
-Uses the Android player client, which frequently bypasses YouTube's
-"sign in to confirm you're not a bot" check tied to the web client,
-and routes through a residential proxy over SOCKS5 (more reliable for
-HTTPS/TLS-heavy traffic than a plain HTTP proxy).
+Uses the Android player client, which bypasses YouTube's "sign in to
+confirm you're not a bot" check tied to the web client. No proxy is
+needed — proxy support remains available (via PROXY_* env vars) but is
+currently unused, since the Android client trick alone works reliably.
 """
 
 import uuid
