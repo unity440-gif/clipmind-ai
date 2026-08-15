@@ -2,8 +2,9 @@
 YouTube downloader service using yt-dlp.
 Downloads a YouTube video to local storage, returning the same kind of
 metadata our upload flow produces — so both paths feed the same pipeline.
-The video_id is passed in from the caller so the saved filename always
-matches the database record's own ID.
+Uses the Android player client, which frequently bypasses YouTube's
+"sign in to confirm you're not a bot" check tied to the web client,
+and routes through a residential proxy as a secondary safeguard.
 """
 
 import uuid
@@ -29,7 +30,19 @@ def download_youtube_video(url: str, video_id: uuid.UUID) -> dict:
         "merge_output_format": "mp4",
         "quiet": True,
         "no_warnings": True,
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["android"],
+            }
+        },
     }
+
+    if settings.PROXY_HOST and settings.PROXY_PORT:
+        proxy_url = (
+            f"http://{settings.PROXY_USERNAME}:{settings.PROXY_PASSWORD}"
+            f"@{settings.PROXY_HOST}:{settings.PROXY_PORT}"
+        )
+        ydl_opts["proxy"] = proxy_url
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=True)

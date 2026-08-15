@@ -136,6 +136,12 @@ export default function DashboardPage() {
             >
               History
             </button>
+            <button
+              onClick={() => router.push("/script-to-video")}
+              className="rounded-lg bg-neutral-800 text-white text-sm font-medium px-4 py-2 hover:bg-neutral-700 transition ml-2"
+            >
+              Script to Video
+            </button>
           </div>
         </div>
 

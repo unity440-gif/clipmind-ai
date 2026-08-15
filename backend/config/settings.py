@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     R2_SECRET_ACCESS_KEY: str = ""
     R2_BUCKET_NAME: str = ""
 
+    PROXY_HOST: str = ""
+    PROXY_PORT: str = ""
+    PROXY_USERNAME: str = ""
+    PROXY_PASSWORD: str = ""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
