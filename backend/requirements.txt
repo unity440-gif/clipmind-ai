@@ -19,3 +19,4 @@ yt-dlp
 google-auth==2.36.0
 resend==2.5.1
 boto3==1.35.0
+pysocks==1.7.1

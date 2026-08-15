@@ -4,7 +4,8 @@ Downloads a YouTube video to local storage, returning the same kind of
 metadata our upload flow produces — so both paths feed the same pipeline.
 Uses the Android player client, which frequently bypasses YouTube's
 "sign in to confirm you're not a bot" check tied to the web client,
-and routes through a residential proxy as a secondary safeguard.
+and routes through a residential proxy over SOCKS5 (more reliable for
+HTTPS/TLS-heavy traffic than a plain HTTP proxy).
 """
 
 import uuid
@@ -38,8 +39,11 @@ def download_youtube_video(url: str, video_id: uuid.UUID) -> dict:
     }
 
     if settings.PROXY_HOST and settings.PROXY_PORT:
+        # socks5h (not socks5) so DNS resolution also happens through the
+        # proxy — more reliable for HTTPS/TLS-heavy traffic like YouTube's,
+        # versus a plain HTTP proxy which struggled with CONNECT tunneling.
         proxy_url = (
-            f"http://{settings.PROXY_USERNAME}:{settings.PROXY_PASSWORD}"
+            f"socks5h://{settings.PROXY_USERNAME}:{settings.PROXY_PASSWORD}"
             f"@{settings.PROXY_HOST}:{settings.PROXY_PORT}"
         )
         ydl_opts["proxy"] = proxy_url
