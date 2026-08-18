@@ -6,6 +6,7 @@ import uuid
 
 from pydantic import BaseModel
 
+
 class CaptionEntry(BaseModel):
     index: int
     start: float
@@ -16,11 +17,13 @@ class CaptionEntry(BaseModel):
 class UpdateCaptionsRequest(BaseModel):
     captions: list[CaptionEntry]
 
+
 class HookDetectionRequest(BaseModel):
     min_duration: int = 60
     max_duration: int = 120
     aspect_ratio: str = "original"  # "original" | "16:9" | "9:16" | "1:1"
     num_clips: int = 5
+    burn_captions: bool = True
 
 
 class ClipResponse(BaseModel):

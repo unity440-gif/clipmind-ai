@@ -7,7 +7,7 @@ with all the metadata the AI hook-detection step produces.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, String, DateTime, ForeignKey, Float, Text, ARRAY
+from sqlalchemy import Column, String, DateTime, ForeignKey, Float, Text, ARRAY, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -39,6 +39,7 @@ class Clip(Base):
 
     storage_path = Column(String, nullable=True)
     aspect_ratio = Column(String, nullable=True)  # "16:9" | "9:16" | "1:1"
+    burn_captions = Column(Boolean, default=True, nullable=False)
     custom_captions_path = Column(String, nullable=True)  # set once user edits captions; overrides auto-generated ones
 
     status = Column(String, default="pending", nullable=False)  # pending -> rendering -> completed -> failed

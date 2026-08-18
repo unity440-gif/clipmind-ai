@@ -151,6 +151,11 @@ def render_clip_task(clip_id: str):
                     output_srt_path=str(local_subtitle_path),
                 )
 
+                # Save a copy of the auto-generated captions to R2 too,
+                # so the caption editor has something to load later —
+                # otherwise this file only ever existed locally and briefly.
+                upload_file(str(local_subtitle_path), f"clips/clip_{clip.id}.srt")
+
             cut_clip(
                 source_video_path=str(local_video_path),
                 output_path=str(local_output_path),

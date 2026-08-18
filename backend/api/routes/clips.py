@@ -89,6 +89,7 @@ def run_hook_detection(
             id=uuid.uuid4(),
             video_id=video.id,
             aspect_ratio=settings.aspect_ratio if settings.aspect_ratio != "original" else None,
+            burn_captions=settings.burn_captions,
             start_time_seconds=clip_data.get("start_time_seconds"),
             end_time_seconds=clip_data.get("end_time_seconds"),
             title=clip_data.get("title"),
@@ -122,6 +123,7 @@ def list_clips(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    """Returns all clips generated for a given video."""
     video = (
         db.query(Video)
         .join(Project)
@@ -215,6 +217,7 @@ def update_clip_captions(
     os.remove(local_path)
 
     clip.custom_captions_path = r2_key
+    clip.burn_captions = True
     clip.status = "rendering"
     db.commit()
 
