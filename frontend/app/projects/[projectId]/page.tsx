@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getToken } from "@/lib/auth";
 import { apiFetch } from "@/lib/api";
+import AppNav from "@/app/components/AppNav";
 
 interface Video {
   id: string;
@@ -92,7 +93,7 @@ export default function ProjectDetailPage() {
                 });
                 urls[c.id] = data.url;
               } catch {
-                // skip silently if one clip's URL fails
+                // skip silently
               }
             })
         );
@@ -182,113 +183,112 @@ export default function ProjectDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center text-neutral-400">
+      <div className="min-h-screen bg-[#0A0F1A] flex items-center justify-center text-[#6E7A8C]">
         Loading...
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <header className="border-b border-neutral-800 px-6 py-4 flex items-center justify-between">
-        <button onClick={() => router.push("/dashboard")} className="text-sm text-neutral-400 hover:text-white transition">
-          ← Back to Dashboard
-        </button>
-      </header>
+    <div className="min-h-screen bg-[#0A0F1A] text-white">
+      <AppNav />
 
-      <main className="max-w-4xl mx-auto px-6 py-10">
-        <h1 className="text-2xl font-semibold mb-2">Generated Clips</h1>
-        <p className="text-neutral-500 text-sm mb-6">
-          {clips.length} clip{clips.length !== 1 ? "s" : ""} generated, ranked by predicted virality
+      <main className="max-w-2xl mx-auto px-6 pt-10 pb-16">
+        <button onClick={() => router.push("/dashboard")} className="text-[12px] text-[#6E7A8C] hover:text-[#DCE6F2] transition mb-6">
+          ← Back
+        </button>
+
+        <p className="text-[19px] text-[#F4F6F8] mb-1">Generated clips</p>
+        <p className="text-[12px] text-[#6E7A8C] mb-6">
+          {clips.length} clip{clips.length !== 1 ? "s" : ""}, ranked by predicted virality
         </p>
 
-        <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-5 mb-8">
-          <h2 className="text-sm font-medium mb-4 text-neutral-300">Clip Settings</h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
+        <div className="rounded-xl bg-[#0F1622] border border-[#1A2434] p-4 mb-8">
+          <p className="text-[12px] text-[#9AA7B8] mb-3">Clip settings</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
             <div>
-              <label className="block text-xs text-neutral-500 mb-1">Min length (sec)</label>
-              <input type="number" min={5} max={300} value={minDuration} onChange={(e) => setMinDuration(Number(e.target.value))} className="w-full rounded-lg bg-neutral-900 border border-neutral-800 text-white px-3 py-2 text-sm outline-none focus:border-neutral-600" />
+              <label className="block text-[10px] text-[#6E7A8C] mb-1">Min (sec)</label>
+              <input type="number" min={5} max={300} value={minDuration} onChange={(e) => setMinDuration(Number(e.target.value))} className="w-full rounded-md bg-[#141C2C] border border-[#22304A] text-white px-2.5 py-1.5 text-[12px] outline-none focus:border-[#3B7DD8]" />
             </div>
             <div>
-              <label className="block text-xs text-neutral-500 mb-1">Max length (sec)</label>
-              <input type="number" min={5} max={300} value={maxDuration} onChange={(e) => setMaxDuration(Number(e.target.value))} className="w-full rounded-lg bg-neutral-900 border border-neutral-800 text-white px-3 py-2 text-sm outline-none focus:border-neutral-600" />
+              <label className="block text-[10px] text-[#6E7A8C] mb-1">Max (sec)</label>
+              <input type="number" min={5} max={300} value={maxDuration} onChange={(e) => setMaxDuration(Number(e.target.value))} className="w-full rounded-md bg-[#141C2C] border border-[#22304A] text-white px-2.5 py-1.5 text-[12px] outline-none focus:border-[#3B7DD8]" />
             </div>
             <div>
-              <label className="block text-xs text-neutral-500 mb-1">Aspect ratio</label>
-              <select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value)} className="w-full rounded-lg bg-neutral-900 border border-neutral-800 text-white px-3 py-2 text-sm outline-none focus:border-neutral-600">
+              <label className="block text-[10px] text-[#6E7A8C] mb-1">Ratio</label>
+              <select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value)} className="w-full rounded-md bg-[#141C2C] border border-[#22304A] text-white px-2 py-1.5 text-[12px] outline-none focus:border-[#3B7DD8]">
                 <option value="original">Original</option>
-                <option value="16:9">16:9 (Landscape)</option>
-                <option value="9:16">9:16 (Vertical)</option>
-                <option value="1:1">1:1 (Square)</option>
+                <option value="16:9">16:9</option>
+                <option value="9:16">9:16</option>
+                <option value="1:1">1:1</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs text-neutral-500 mb-1"># of clips</label>
-              <input type="number" min={1} max={10} value={numClips} onChange={(e) => setNumClips(Number(e.target.value))} className="w-full rounded-lg bg-neutral-900 border border-neutral-800 text-white px-3 py-2 text-sm outline-none focus:border-neutral-600" />
+              <label className="block text-[10px] text-[#6E7A8C] mb-1"># clips</label>
+              <input type="number" min={1} max={10} value={numClips} onChange={(e) => setNumClips(Number(e.target.value))} className="w-full rounded-md bg-[#141C2C] border border-[#22304A] text-white px-2.5 py-1.5 text-[12px] outline-none focus:border-[#3B7DD8]" />
             </div>
           </div>
 
-          <label className="flex items-center gap-2 text-sm text-neutral-400 cursor-pointer mb-4">
-            <input type="checkbox" checked={burnCaptions} onChange={(e) => setBurnCaptions(e.target.checked)} className="w-4 h-4" />
+          <label className="flex items-center gap-2 text-[12px] text-[#9AA7B8] cursor-pointer mb-3">
+            <input type="checkbox" checked={burnCaptions} onChange={(e) => setBurnCaptions(e.target.checked)} className="w-3.5 h-3.5" />
             Burn captions into clips
           </label>
 
-          <button onClick={handleDetectHooks} disabled={detecting || videos.length === 0} className="rounded-lg bg-white text-black text-sm font-medium px-4 py-2 hover:bg-neutral-200 transition disabled:opacity-50">
-            {detecting ? "Analyzing transcript..." : "Run AI Hook Detection (1 credit)"}
+          <button onClick={handleDetectHooks} disabled={detecting || videos.length === 0} className="rounded-lg bg-[#3B7DD8] text-white text-[12px] font-medium px-4 py-2 hover:bg-[#4A8AE0] transition disabled:opacity-50">
+            {detecting ? "Analyzing transcript..." : "Run AI hook detection (1 credit)"}
           </button>
         </div>
 
         {error ? (
-          <p className="text-sm text-red-400 bg-red-950/40 border border-red-900 rounded-lg px-3 py-2 mb-6">{error}</p>
+          <p className="text-[13px] text-[#D98787] bg-[#2A1616]/60 border border-[#4A2222] rounded-lg px-3 py-2 mb-6">{error}</p>
         ) : null}
 
         {clips.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-neutral-800 py-16 text-center text-neutral-500">
-            No clips yet. Adjust settings above and click &quot;Run AI Hook Detection&quot;.
+          <div className="rounded-xl border border-dashed border-[#1A2434] py-16 text-center text-[#6E7A8C] text-[13px]">
+            No clips yet. Adjust settings above and click &quot;Run AI hook detection&quot;.
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {clips.map((clip) => (
-              <div key={clip.id} className="rounded-xl border border-neutral-800 bg-neutral-950 p-5">
-                <div className="flex items-start justify-between mb-3">
-                  <h2 className="text-lg font-medium">{clip.title}</h2>
-                  <span className="text-xs px-2 py-1 rounded-full bg-neutral-900 border border-neutral-800 text-neutral-400 whitespace-nowrap ml-3">
+              <div key={clip.id} className="rounded-xl bg-[#0F1622] border border-[#1A2434] p-4">
+                <div className="flex items-start justify-between mb-2.5">
+                  <p className="text-[14px] text-[#F4F6F8]">{clip.title}</p>
+                  <span className="text-[10px] text-[#8FBBF0] bg-[#141F30] px-2.5 py-1 rounded-full whitespace-nowrap ml-3">
                     🔥 {clip.virality_score}/100
                   </span>
                 </div>
 
-                <p className="text-sm text-neutral-400 mb-4">{clip.summary}</p>
+                <p className="text-[12px] text-[#9AA7B8] mb-3 leading-[1.5]">{clip.summary}</p>
 
-                {clip.status === "completed" && clipUrls[clip.id] ? (<div className="mb-4"><video controls className="w-full rounded-lg mb-2 bg-black" src={clipUrls[clip.id]} /><a href={clipUrls[clip.id]} download={`${clip.title || "clip"}.mp4`} className="inline-block text-xs rounded-lg bg-neutral-800 text-white px-3 py-1.5 hover:bg-neutral-700 transition">Download Clip</a></div>) : (
-                  <div className="w-full rounded-lg mb-4 bg-neutral-900 border border-neutral-800 py-8 text-center text-sm text-neutral-500">
+                {clip.status === "completed" && clipUrls[clip.id] ? (<div className="mb-3"><video controls className="w-full rounded-lg mb-2 bg-black" src={clipUrls[clip.id]} /><a href={clipUrls[clip.id]} download={`${clip.title || "clip"}.mp4`} className="inline-block text-[11px] rounded-md bg-[#141C2C] border border-[#22304A] text-[#DCE6F2] px-3 py-1.5 hover:border-[#2A3B52] transition">Download clip</a></div>) : (
+                  <div className="w-full rounded-lg mb-3 bg-[#0A0F1A] border border-[#1A2434] py-8 text-center text-[12px] text-[#6E7A8C]">
                     {clip.status === "failed" ? "Rendering failed" : "Rendering video..."}
                   </div>
                 )}
 
                 {clip.status === "completed" ? (
-                  <button onClick={() => openCaptionEditor(clip.id)} className="text-xs text-neutral-400 hover:text-white transition mb-4 underline">
+                  <button onClick={() => openCaptionEditor(clip.id)} className="text-[11px] text-[#6E7A8C] hover:text-[#DCE6F2] transition mb-3 underline">
                     Edit captions
                   </button>
                 ) : null}
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                  <div className="rounded-lg bg-neutral-900 border border-neutral-800 p-3">
-                    <p className="text-neutral-500 mb-1">TikTok</p>
-                    <p className="text-neutral-300">{clip.tiktok_caption}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
+                  <div className="rounded-lg bg-[#141C2C] border border-[#1A2434] p-2.5">
+                    <p className="text-[#6E7A8C] mb-1">TikTok</p>
+                    <p className="text-[#DCE6F2]">{clip.tiktok_caption}</p>
                   </div>
-                  <div className="rounded-lg bg-neutral-900 border border-neutral-800 p-3">
-                    <p className="text-neutral-500 mb-1">Instagram</p>
-                    <p className="text-neutral-300">{clip.instagram_caption}</p>
+                  <div className="rounded-lg bg-[#141C2C] border border-[#1A2434] p-2.5">
+                    <p className="text-[#6E7A8C] mb-1">Instagram</p>
+                    <p className="text-[#DCE6F2]">{clip.instagram_caption}</p>
                   </div>
-                  <div className="rounded-lg bg-neutral-900 border border-neutral-800 p-3">
-                    <p className="text-neutral-500 mb-1">YouTube</p>
-                    <p className="text-neutral-300">{clip.youtube_caption}</p>
+                  <div className="rounded-lg bg-[#141C2C] border border-[#1A2434] p-2.5">
+                    <p className="text-[#6E7A8C] mb-1">YouTube</p>
+                    <p className="text-[#DCE6F2]">{clip.youtube_caption}</p>
                   </div>
                 </div>
 
                 {clip.hashtags ? (
-                  <p className="text-xs text-neutral-500 mt-3">
+                  <p className="text-[11px] text-[#6E7A8C] mt-2.5">
                     {clip.hashtags.map((tag) => `#${tag}`).join(" ")}
                   </p>
                 ) : null}
@@ -300,32 +300,32 @@ export default function ProjectDetailPage() {
 
       {editingClipId ? (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center px-4 z-50">
-          <div className="bg-neutral-950 border border-neutral-800 rounded-xl w-full max-w-lg max-h-[80vh] flex flex-col">
-            <div className="p-5 border-b border-neutral-800 flex items-center justify-between">
-              <h3 className="font-medium">Edit Captions</h3>
-              <button onClick={() => setEditingClipId(null)} className="text-neutral-500 hover:text-white transition">✕</button>
+          <div className="bg-[#0F1622] border border-[#1A2434] rounded-xl w-full max-w-lg max-h-[80vh] flex flex-col">
+            <div className="p-4 border-b border-[#1A2434] flex items-center justify-between">
+              <p className="text-[14px] text-[#F4F6F8]">Edit captions</p>
+              <button onClick={() => setEditingClipId(null)} className="text-[#6E7A8C] hover:text-[#DCE6F2] transition">✕</button>
             </div>
 
-            <div className="p-5 overflow-y-auto flex-1 space-y-3">
+            <div className="p-4 overflow-y-auto flex-1 space-y-3">
               {captionsLoading ? (
-                <p className="text-sm text-neutral-500">Loading captions...</p>
+                <p className="text-[12px] text-[#6E7A8C]">Loading captions...</p>
               ) : captionError ? (
-                <p className="text-sm text-red-400">{captionError}</p>
+                <p className="text-[12px] text-[#D98787]">{captionError}</p>
               ) : (
                 captions.map((c) => (
                   <div key={c.index}>
-                    <p className="text-xs text-neutral-600 mb-1">{c.start.toFixed(1)}s – {c.end.toFixed(1)}s</p>
-                    <input type="text" value={c.text} onChange={(e) => updateCaptionText(c.index, e.target.value)} className="w-full rounded-lg bg-neutral-900 border border-neutral-800 text-white px-3 py-2 text-sm outline-none focus:border-neutral-600" />
+                    <p className="text-[10px] text-[#4A5568] mb-1">{c.start.toFixed(1)}s – {c.end.toFixed(1)}s</p>
+                    <input type="text" value={c.text} onChange={(e) => updateCaptionText(c.index, e.target.value)} className="w-full rounded-md bg-[#141C2C] border border-[#22304A] text-white px-2.5 py-1.5 text-[12px] outline-none focus:border-[#3B7DD8]" />
                   </div>
                 ))
               )}
             </div>
 
-            <div className="p-5 border-t border-neutral-800 flex gap-3">
-              <button onClick={handleSaveCaptions} disabled={savingCaptions || captionsLoading} className="rounded-lg bg-white text-black text-sm font-medium px-4 py-2 hover:bg-neutral-200 transition disabled:opacity-50">
-                {savingCaptions ? "Saving & re-rendering..." : "Save & Re-render"}
+            <div className="p-4 border-t border-[#1A2434] flex gap-3">
+              <button onClick={handleSaveCaptions} disabled={savingCaptions || captionsLoading} className="rounded-lg bg-[#3B7DD8] text-white text-[12px] font-medium px-4 py-2 hover:bg-[#4A8AE0] transition disabled:opacity-50">
+                {savingCaptions ? "Saving & re-rendering..." : "Save & re-render"}
               </button>
-              <button onClick={() => setEditingClipId(null)} className="text-sm text-neutral-400 hover:text-white transition">
+              <button onClick={() => setEditingClipId(null)} className="text-[12px] text-[#6E7A8C] hover:text-[#DCE6F2] transition">
                 Cancel
               </button>
             </div>

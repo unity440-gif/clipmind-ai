@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
 import { getToken } from "@/lib/auth";
 import { apiFetch } from "@/lib/api";
+import AppNav from "@/app/components/AppNav";
 
 interface Scene {
   id: string;
@@ -24,7 +24,6 @@ interface ScriptProjectData {
 }
 
 export default function ScriptToVideoPage() {
-  const router = useRouter();
   const [title, setTitle] = useState("");
   const [scriptText, setScriptText] = useState("");
   const [project, setProject] = useState<ScriptProjectData | null>(null);
@@ -72,6 +71,7 @@ export default function ScriptToVideoPage() {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project?.id, project?.status]);
 
   async function handleCompile() {
@@ -104,67 +104,96 @@ export default function ScriptToVideoPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <header className="border-b border-neutral-800 px-6 py-4 flex items-center justify-between">
-        <button onClick={() => router.push("/dashboard")} className="text-sm text-neutral-400 hover:text-white transition">
-          ← Back to Dashboard
-        </button>
-      </header>
+    <div className="min-h-screen bg-[#0A0F1A] text-white">
+      <AppNav />
 
-      <main className="max-w-3xl mx-auto px-6 py-10">
-        <h1 className="text-2xl font-semibold mb-2">Script to Video</h1>
-        <p className="text-neutral-500 text-sm mb-8">
-          Paste a script, AI breaks it into scenes, generates an image and narration for each, and compiles it into a video. Costs 1 credit per scene.
+      <main className="max-w-[560px] mx-auto px-6 pt-16 pb-16">
+        <p className="text-[19px] text-[#F4F6F8] mb-1">Script to video</p>
+        <p className="text-[12px] text-[#6E7A8C] mb-8">
+          AI breaks it into scenes, generates an image and narration for each, and compiles it into a video. Costs 1 credit per scene.
         </p>
 
         {!project ? (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm text-neutral-400 mb-1">Title</label>
-              <input type="text" required value={title} onChange={(e) => setTitle(e.target.value)} className="w-full rounded-lg bg-neutral-900 border border-neutral-800 text-white px-4 py-2.5 outline-none focus:border-neutral-600" />
+              <label className="block text-[12px] text-[#9AA7B8] mb-1.5">Title</label>
+              <input
+                type="text"
+                required
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full rounded-lg bg-[#0F1622] border border-[#22304A] text-white text-[14px] px-3.5 py-2.5 outline-none focus:border-[#3B7DD8] transition"
+              />
             </div>
             <div>
-              <label className="block text-sm text-neutral-400 mb-1">Script</label>
-              <textarea required rows={8} value={scriptText} onChange={(e) => setScriptText(e.target.value)} placeholder="Paste your story or script here..." className="w-full rounded-lg bg-neutral-900 border border-neutral-800 text-white px-4 py-2.5 outline-none focus:border-neutral-600 resize-none" />
+              <label className="block text-[12px] text-[#9AA7B8] mb-1.5">Script</label>
+              <textarea
+                required
+                rows={8}
+                value={scriptText}
+                onChange={(e) => setScriptText(e.target.value)}
+                placeholder="Paste your story or script here..."
+                className="w-full rounded-lg bg-[#0F1622] border border-[#22304A] text-white text-[14px] px-3.5 py-2.5 outline-none focus:border-[#3B7DD8] transition resize-none"
+              />
             </div>
 
-            {error ? (
-              <p className="text-sm text-red-400 bg-red-950/40 border border-red-900 rounded-lg px-3 py-2">{error}</p>
-            ) : null}
+            {error && (
+              <p className="text-[13px] text-[#D98787] bg-[#2A1616]/60 border border-[#4A2222] rounded-lg px-3 py-2">
+                {error}
+              </p>
+            )}
 
-            <button type="submit" disabled={submitting} className="rounded-lg bg-white text-black text-sm font-medium px-5 py-2.5 hover:bg-neutral-200 transition disabled:opacity-50">
-              {submitting ? "Submitting..." : "Generate Scenes"}
+            <button
+              type="submit"
+              disabled={submitting}
+              className="rounded-lg bg-[#3B7DD8] text-white text-[13px] font-medium px-5 py-2.5 hover:bg-[#4A8AE0] transition disabled:opacity-50"
+            >
+              {submitting ? "Submitting..." : "Generate scenes"}
             </button>
           </form>
         ) : (
           <div>
-            <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-4 mb-6">
-              <p className="text-sm text-neutral-400">{statusLabels[project.status] || project.status}</p>
+            <div className="rounded-xl border border-[#1A2434] bg-[#0F1622] p-4 mb-6">
+              <p className="text-[13px] text-[#DCE6F2]">{statusLabels[project.status] || project.status}</p>
             </div>
 
-            {project.status === "scenes_ready" ? (
-              <button onClick={handleCompile} disabled={compiling} className="rounded-lg bg-white text-black text-sm font-medium px-5 py-2.5 hover:bg-neutral-200 transition disabled:opacity-50 mb-6">
-                {compiling ? "Starting..." : "Compile into Video"}
+            {project.status === "scenes_ready" && (
+              <button
+                onClick={handleCompile}
+                disabled={compiling}
+                className="rounded-lg bg-[#3B7DD8] text-white text-[13px] font-medium px-5 py-2.5 hover:bg-[#4A8AE0] transition disabled:opacity-50 mb-6"
+              >
+                {compiling ? "Starting..." : "Compile into video"}
               </button>
-            ) : null}
+            )}
 
             {project.status === "completed" && project.compiled_video_url ? (
-              <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-5 mb-8">
-                <video controls className="w-full rounded-lg mb-4" src={project.compiled_video_url} />
-                <a href={project.compiled_video_url} download={project.title + ".mp4"} className="inline-block rounded-lg bg-white text-black text-sm font-medium px-5 py-2.5 hover:bg-neutral-200 transition">
-                  Download Video
+              <div className="rounded-xl border border-[#1A2434] bg-[#0F1622] p-4 mb-8">
+                <video controls className="w-full rounded-lg mb-3" src={project.compiled_video_url} />
+                
+                  href={project.compiled_video_url}
+                  download={`${project.title}.mp4`}
+                  className="inline-block rounded-lg bg-[#3B7DD8] text-white text-[12px] font-medium px-4 py-2 hover:bg-[#4A8AE0] transition"
+                >
+                  Download video
                 </a>
               </div>
             ) : null}
 
-            <div className="space-y-4">
+            <p className="text-[11px] text-[#6E7A8C] mb-3">SCENES</p>
+            <div className="grid grid-cols-2 gap-3">
               {project.scenes.map((scene) => (
-                <div key={scene.id} className="rounded-xl border border-neutral-800 bg-neutral-950 p-4">
-                  <p className="text-xs text-neutral-600 mb-2">Scene {scene.scene_number}</p>
-                  <p className="text-sm text-neutral-300 mb-3">{scene.narration_text}</p>
+                <div key={scene.id} className="rounded-lg bg-[#0F1622] border border-[#1A2434] p-3">
+                  <p className="text-[10px] text-[#6E7A8C] mb-2">Scene {scene.scene_number}</p>
                   {scene.image_url ? (
-                    <img src={scene.image_url} alt={scene.description} className="rounded-lg max-w-sm" />
-                  ) : null}
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={scene.image_url} alt={scene.description} className="rounded-md mb-2 w-full" />
+                  ) : (
+                    <div className="rounded-md mb-2 bg-[#141C2C] h-20 flex items-center justify-center">
+                      <span className="text-[10px] text-[#4A5568]">Generating...</span>
+                    </div>
+                  )}
+                  <p className="text-[11px] text-[#B8C2D0] leading-[1.4]">{scene.narration_text}</p>
                 </div>
               ))}
             </div>

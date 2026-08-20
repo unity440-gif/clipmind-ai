@@ -1,14 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { getToken } from "@/lib/auth";
 import { apiFetch } from "@/lib/api";
+import AppNav from "@/app/components/AppNav";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function GenerateImagePage() {
-  const router = useRouter();
   const [prompt, setPrompt] = useState("");
   const [aspectRatio, setAspectRatio] = useState("1:1");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -37,50 +36,50 @@ export default function GenerateImagePage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <header className="border-b border-neutral-800 px-6 py-4 flex items-center justify-between">
-        <button
-          onClick={() => router.push("/dashboard")}
-          className="text-sm text-neutral-400 hover:text-white transition"
-        >
-          ← Back to Dashboard
-        </button>
-      </header>
+    <div className="min-h-screen bg-[#0A0F1A] text-white">
+      <AppNav />
 
-      <main className="max-w-2xl mx-auto px-6 py-10">
-        <h1 className="text-2xl font-semibold mb-2">Generate an Image</h1>
-        <p className="text-neutral-500 text-sm mb-8">
-          Describe what you want, and AI will create it. Costs 1 credit per image.
+      <main className="max-w-[480px] mx-auto px-6 pt-16 pb-16">
+        <p className="text-[19px] text-[#F4F6F8] mb-1">Generate an image</p>
+        <p className="text-[12px] text-[#6E7A8C] mb-8">
+          Describe what you want. Costs 1 credit per image.
         </p>
 
         <form onSubmit={handleGenerate} className="space-y-4 mb-8">
           <div>
-            <label className="block text-sm text-neutral-400 mb-1">Prompt</label>
+            <label className="block text-[12px] text-[#9AA7B8] mb-1.5">Prompt</label>
             <textarea
               required
               rows={3}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="e.g. A cozy coffee shop interior at sunset, warm lighting, cinematic"
-              className="w-full rounded-lg bg-neutral-900 border border-neutral-800 text-white px-4 py-2.5 outline-none focus:border-neutral-600 resize-none"
+              className="w-full rounded-lg bg-[#0F1622] border border-[#22304A] text-white text-[14px] px-3.5 py-2.5 outline-none focus:border-[#3B7DD8] transition resize-none"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-neutral-400 mb-1">Aspect ratio</label>
-            <select
-              value={aspectRatio}
-              onChange={(e) => setAspectRatio(e.target.value)}
-              className="w-full rounded-lg bg-neutral-900 border border-neutral-800 text-white px-4 py-2.5 outline-none focus:border-neutral-600"
-            >
-              <option value="1:1">1:1 (Square)</option>
-              <option value="16:9">16:9 (Landscape)</option>
-              <option value="9:16">9:16 (Portrait)</option>
-            </select>
+            <label className="block text-[12px] text-[#9AA7B8] mb-1.5">Aspect ratio</label>
+            <div className="flex gap-2">
+              {["1:1", "16:9", "9:16"].map((ratio) => (
+                <button
+                  key={ratio}
+                  type="button"
+                  onClick={() => setAspectRatio(ratio)}
+                  className={`text-[12px] px-3.5 py-1.5 rounded-lg border transition ${
+                    aspectRatio === ratio
+                      ? "bg-[#141F30] text-[#8FBBF0] border-[#3B7DD8]"
+                      : "text-[#9AA7B8] border-[#22304A] hover:border-[#2A3B52]"
+                  }`}
+                >
+                  {ratio}
+                </button>
+              ))}
+            </div>
           </div>
 
           {error && (
-            <p className="text-sm text-red-400 bg-red-950/40 border border-red-900 rounded-lg px-3 py-2">
+            <p className="text-[13px] text-[#D98787] bg-[#2A1616]/60 border border-[#4A2222] rounded-lg px-3 py-2">
               {error}
             </p>
           )}
@@ -88,16 +87,20 @@ export default function GenerateImagePage() {
           <button
             type="submit"
             disabled={loading}
-            className="rounded-lg bg-white text-black text-sm font-medium px-5 py-2.5 hover:bg-neutral-200 transition disabled:opacity-50"
+            className="rounded-lg bg-[#3B7DD8] text-white text-[13px] font-medium px-5 py-2.5 hover:bg-[#4A8AE0] transition disabled:opacity-50"
           >
-            {loading ? "Generating..." : "Generate Image (1 credit)"}
+            {loading ? "Generating..." : "Generate image (1 credit)"}
           </button>
         </form>
 
-        {imageUrl && (
-          <div className="rounded-xl border border-neutral-800 overflow-hidden">
+        {imageUrl ? (
+          <div className="rounded-xl border border-[#1A2434] overflow-hidden">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={imageUrl} alt={prompt} className="w-full" />
+          </div>
+        ) : (
+          <div className="rounded-xl border border-[#1A2434] bg-[#0F1622] aspect-square flex items-center justify-center">
+            <p className="text-[11px] text-[#4A5568]">Your image will appear here</p>
           </div>
         )}
       </main>
