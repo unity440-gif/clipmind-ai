@@ -62,6 +62,7 @@ export default function ProjectDetailPage() {
   const [captionsLoading, setCaptionsLoading] = useState(false);
   const [savingCaptions, setSavingCaptions] = useState(false);
   const [captionError, setCaptionError] = useState("");
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   async function loadData() {
     const token = getToken();
@@ -181,6 +182,27 @@ export default function ProjectDetailPage() {
     }
   }
 
+  async function handleDownload(clipId: string, filename: string) {
+    setDownloadingId(clipId);
+    try {
+      const response = await fetch(clipUrls[clipId]);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      alert("Download failed. Try again.");
+    } finally {
+      setDownloadingId(null);
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0A0F1A] flex items-center justify-center text-[#6E7A8C]">
@@ -260,7 +282,18 @@ export default function ProjectDetailPage() {
 
                 <p className="text-[12px] text-[#9AA7B8] mb-3 leading-[1.5]">{clip.summary}</p>
 
-                {clip.status === "completed" && clipUrls[clip.id] ? (<div className="mb-3"><video controls className="w-full rounded-lg mb-2 bg-black" src={clipUrls[clip.id]} /><a href={clipUrls[clip.id]} download={`${clip.title || "clip"}.mp4`} className="inline-block text-[11px] rounded-md bg-[#141C2C] border border-[#22304A] text-[#DCE6F2] px-3 py-1.5 hover:border-[#2A3B52] transition">Download clip</a></div>) : (
+                {clip.status === "completed" && clipUrls[clip.id] ? (
+                  <div className="mb-3">
+                    <video controls className="w-full rounded-lg mb-2 bg-black" src={clipUrls[clip.id]} />
+                    <button
+                      onClick={() => handleDownload(clip.id, `${clip.title || "clip"}.mp4`)}
+                      disabled={downloadingId === clip.id}
+                      className="text-[11px] rounded-md bg-[#141C2C] border border-[#22304A] text-[#DCE6F2] px-3 py-1.5 hover:border-[#2A3B52] transition disabled:opacity-50"
+                    >
+                      {downloadingId === clip.id ? "Downloading..." : "Download clip"}
+                    </button>
+                  </div>
+                ) : (
                   <div className="w-full rounded-lg mb-3 bg-[#0A0F1A] border border-[#1A2434] py-8 text-center text-[12px] text-[#6E7A8C]">
                     {clip.status === "failed" ? "Rendering failed" : "Rendering video..."}
                   </div>
