@@ -71,7 +71,6 @@ export default function ScriptToVideoPage() {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project?.id, project?.status]);
 
   async function handleCompile() {
@@ -137,11 +136,11 @@ export default function ScriptToVideoPage() {
               />
             </div>
 
-            {error && (
+            {error ? (
               <p className="text-[13px] text-[#D98787] bg-[#2A1616]/60 border border-[#4A2222] rounded-lg px-3 py-2">
                 {error}
               </p>
-            )}
+            ) : null}
 
             <button
               type="submit"
@@ -157,7 +156,7 @@ export default function ScriptToVideoPage() {
               <p className="text-[13px] text-[#DCE6F2]">{statusLabels[project.status] || project.status}</p>
             </div>
 
-            {project.status === "scenes_ready" && (
+            {project.status === "scenes_ready" ? (
               <button
                 onClick={handleCompile}
                 disabled={compiling}
@@ -165,12 +164,12 @@ export default function ScriptToVideoPage() {
               >
                 {compiling ? "Starting..." : "Compile into video"}
               </button>
-            )}
+            ) : null}
 
             {project.status === "completed" && project.compiled_video_url ? (
               <div className="rounded-xl border border-[#1A2434] bg-[#0F1622] p-4 mb-8">
                 <video controls className="w-full rounded-lg mb-3" src={project.compiled_video_url} />
-                
+                <a
                   href={project.compiled_video_url}
                   download={`${project.title}.mp4`}
                   className="inline-block rounded-lg bg-[#3B7DD8] text-white text-[12px] font-medium px-4 py-2 hover:bg-[#4A8AE0] transition"
@@ -186,7 +185,6 @@ export default function ScriptToVideoPage() {
                 <div key={scene.id} className="rounded-lg bg-[#0F1622] border border-[#1A2434] p-3">
                   <p className="text-[10px] text-[#6E7A8C] mb-2">Scene {scene.scene_number}</p>
                   {scene.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
                     <img src={scene.image_url} alt={scene.description} className="rounded-md mb-2 w-full" />
                   ) : (
                     <div className="rounded-md mb-2 bg-[#141C2C] h-20 flex items-center justify-center">
