@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getCurrentUser, getToken, logout, CurrentUser } from "@/lib/auth";
+import { getToken } from "@/lib/auth";
 import { apiFetch } from "@/lib/api";
+import AppNav from "@/app/components/AppNav";
 
 interface Project {
   id: string;
@@ -12,11 +13,19 @@ interface Project {
   created_at: string;
 }
 
+const NEW_OPTIONS = [
+  { label: "Clip a video", href: "/upload" },
+  { label: "Generate an image", href: "/generate-image" },
+  { label: "Text to speech", href: "/text-to-speech" },
+  { label: "Reformat a video", href: "/reformat" },
+  { label: "Script to video", href: "/script-to-video" },
+];
+
 export default function DashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<CurrentUser | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [newOpen, setNewOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function loadProjects() {
@@ -33,10 +42,7 @@ export default function DashboardPage() {
         router.push("/login");
         return;
       }
-
       try {
-        const currentUser = await getCurrentUser();
-        setUser(currentUser);
         await loadProjects();
       } catch {
         router.push("/login");
@@ -44,17 +50,13 @@ export default function DashboardPage() {
         setLoading(false);
       }
     }
-
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   async function handleDelete(e: React.MouseEvent, projectId: string) {
     e.stopPropagation();
-
-    if (!confirm("Delete this project permanently? This cannot be undone.")) {
-      return;
-    }
+    if (!confirm("Delete this project permanently? This cannot be undone.")) return;
 
     setDeletingId(projectId);
     try {
@@ -73,106 +75,78 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center text-neutral-400">
+      <div className="min-h-screen bg-[#0A0F1A] flex items-center justify-center text-[#6E7A8C]">
         Loading...
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <header className="border-b border-neutral-800 px-6 py-4 flex items-center justify-between">
-        <h1 className="text-lg font-semibold">ClipMind AI</h1>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-neutral-400">
-            {user?.credits_remaining} credits
-          </span>
-          <button
-            onClick={() => router.push("/profile")}
-            className="text-sm text-neutral-400 hover:text-white transition"
-          >
-            {user?.email}
-          </button>
-          <button
-            onClick={logout}
-            className="text-sm text-neutral-400 hover:text-white transition"
-          >
-            Log out
-          </button>
-        </div>
-      </header>
+    <div className="min-h-screen bg-[#0A0F1A] text-white">
+      <AppNav />
 
-      <main className="max-w-5xl mx-auto px-6 py-10">
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-          <h2 className="text-xl font-semibold">Your Projects</h2>
-          <div>
-            <button
-              onClick={() => router.push("/upload")}
-              className="rounded-lg bg-white text-black text-sm font-medium px-4 py-2 hover:bg-neutral-200 transition"
-            >
-              {"+ New Project"}
-            </button>
-            <button
-              onClick={() => router.push("/generate-image")}
-              className="rounded-lg bg-neutral-800 text-white text-sm font-medium px-4 py-2 hover:bg-neutral-700 transition ml-2"
-            >
-              Generate Image
-            </button>
-            <button
-              onClick={() => router.push("/text-to-speech")}
-              className="rounded-lg bg-neutral-800 text-white text-sm font-medium px-4 py-2 hover:bg-neutral-700 transition ml-2"
-            >
-              Text to Speech
-            </button>
-            <button
-              onClick={() => router.push("/reformat")}
-              className="rounded-lg bg-neutral-800 text-white text-sm font-medium px-4 py-2 hover:bg-neutral-700 transition ml-2"
-            >
-              Reformat Video
-            </button>
-            <button
-              onClick={() => router.push("/history")}
-              className="rounded-lg bg-neutral-800 text-white text-sm font-medium px-4 py-2 hover:bg-neutral-700 transition ml-2"
-            >
-              History
-            </button>
-            <button
-              onClick={() => router.push("/script-to-video")}
-              className="rounded-lg bg-neutral-800 text-white text-sm font-medium px-4 py-2 hover:bg-neutral-700 transition ml-2"
-            >
-              Script to Video
-            </button>
-          </div>
-        </div>
+      <main className="max-w-2xl mx-auto px-6 pt-20 pb-16 text-center">
+        <p className="text-[12px] text-[#6E7A8C] mb-3.5 tracking-wide">Welcome back</p>
+        <h1 className="text-[25px] text-[#F4F6F8] mb-8 font-normal">
+          What do you want to make today?
+        </h1>
 
-        {projects.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-neutral-800 py-16 text-center text-neutral-500">
-            No projects yet. Upload a video to get started.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {projects.map((project) => (
-              <div
-                key={project.id}
-                onClick={() => router.push(`/projects/${project.id}`)}
-                className="rounded-xl border border-neutral-800 bg-neutral-950 p-4 hover:border-neutral-700 transition cursor-pointer relative group"
-              >
-                <button
-                  onClick={(e) => handleDelete(e, project.id)}
-                  disabled={deletingId === project.id}
-                  className="absolute top-3 right-3 text-neutral-600 hover:text-red-400 transition text-xs opacity-0 group-hover:opacity-100 disabled:opacity-50"
-                  title="Delete project"
-                >
-                  {deletingId === project.id ? "..." : "✕"}
-                </button>
-                <h3 className="font-medium mb-1 pr-4">{project.title}</h3>
-                <span className="inline-block text-xs px-2 py-1 rounded-full bg-neutral-900 text-neutral-400 border border-neutral-800">
-                  {project.status}
-                </span>
+        <div className="relative inline-block">
+          <button
+            onClick={() => setNewOpen((v) => !v)}
+            className="bg-[#3B7DD8] text-[#F4F6F8] text-[13px] font-medium px-6 py-2.5 rounded-lg hover:bg-[#4A8AE0] transition"
+          >
+            + New
+          </button>
+          {newOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setNewOpen(false)} />
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 bg-[#0F1622] border border-[#22304A] rounded-xl p-1.5 shadow-2xl z-50 text-left">
+                {NEW_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.href}
+                    onClick={() => router.push(opt.href)}
+                    className="w-full text-left block px-3 py-2.5 rounded-lg hover:bg-white/5 transition text-[13px] text-[#DCE6F2]"
+                  >
+                    {opt.label}
+                  </button>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            </>
+          )}
+        </div>
+
+        <div className="mt-14 text-left">
+          <p className="text-[11px] text-[#6E7A8C] mb-3.5 tracking-wide">RECENT</p>
+
+          {projects.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-[#1A2434] py-16 text-center text-[#6E7A8C] text-[13px]">
+              No projects yet. Click &quot;+ New&quot; to get started.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {projects.map((project) => (
+                <div
+                  key={project.id}
+                  onClick={() => router.push(`/projects/${project.id}`)}
+                  className="bg-[#0F1622] border border-[#1A2434] rounded-xl p-4 hover:border-[#2A3B52] transition cursor-pointer relative group"
+                >
+                  <button
+                    onClick={(e) => handleDelete(e, project.id)}
+                    disabled={deletingId === project.id}
+                    className="absolute top-3 right-3 text-[#4A5568] hover:text-[#D98787] transition text-xs opacity-0 group-hover:opacity-100"
+                  >
+                    {deletingId === project.id ? "…" : "✕"}
+                  </button>
+                  <p className="text-[13px] text-[#F4F6F8] mb-2 pr-4">{project.title}</p>
+                  <span className="inline-block text-[10px] text-[#8FBBF0] bg-[#141F30] px-2 py-1 rounded-full">
+                    {project.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );

@@ -1,105 +1,216 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 
 export default function HomePage() {
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+
+  const menus: Record<string, { label: string; desc: string }[]> = {
+    Features: [
+      { label: "AI hook detection", desc: "Finds the moments worth sharing" },
+      { label: "Auto captions", desc: "Synced, styled, and editable" },
+      { label: "YouTube import", desc: "Paste a link, no download needed" },
+      { label: "Multiple formats", desc: "16:9, 9:16, or 1:1 in one click" },
+      { label: "Photo generation", desc: "Create images from a text prompt" },
+      { label: "Text to speech", desc: "Six real narrator voices for any script" },
+      { label: "Script to video", desc: "Turn a script into scenes, no footage needed" },
+      { label: "Quick reformat", desc: "Change a video's aspect ratio, nothing else" },
+      { label: "Generation history", desc: "Every image and voiceover you've made" },
+    ],
+    Pricing: [
+      { label: "Pay as you go", desc: "Credits, no subscription required" },
+      { label: "Buy credits", desc: "Top up anytime from your billing page" },
+    ],
+    Docs: [
+      { label: "Getting started", desc: "Upload your first video in minutes" },
+      { label: "API reference", desc: "Coming soon" },
+    ],
+  };
+
   return (
-    <div className="min-h-screen bg-black text-white">
-      <header className="border-b border-neutral-900 px-6 py-4 flex items-center justify-between max-w-6xl mx-auto">
-        <span className="text-lg font-semibold">ClipMind AI</span>
-        <div className="flex items-center gap-4">
-          <Link href="/login" className="text-sm text-neutral-400 hover:text-white transition">
-            Log in
-          </Link>
-          <Link href="/signup" className="rounded-lg bg-white text-black text-sm font-medium px-4 py-2 hover:bg-neutral-200 transition">
-            Get Started
-          </Link>
-        </div>
-      </header>
-
-      <section className="max-w-4xl mx-auto px-6 pt-24 pb-20 text-center">
-        <h1 className="text-4xl sm:text-6xl font-semibold tracking-tight leading-tight">
-          Turn long videos into
-          <br />
-          <span className="bg-gradient-to-r from-white to-neutral-500 bg-clip-text text-transparent">
-            viral short clips
-          </span>
-        </h1>
-        <p className="mt-6 text-lg text-neutral-400 max-w-xl mx-auto">
-          Upload a video or paste a YouTube link. Our AI finds the best moments,
-          writes the hooks and captions, and cuts the clips — automatically.
-        </p>
-        <div className="mt-10 flex items-center justify-center gap-4">
-          <Link href="/signup" className="rounded-lg bg-white text-black font-medium px-6 py-3 hover:bg-neutral-200 transition">
-            Start Clipping — Free
-          </Link>
-        </div>
-      </section>
-
-      <section className="max-w-5xl mx-auto px-6 py-20 border-t border-neutral-900">
-        <h2 className="text-2xl sm:text-3xl font-semibold text-center mb-16">
-          From video to viral in three steps
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-10">
-          <div>
-            <div className="text-sm text-neutral-600 mb-2">01</div>
-            <h3 className="text-lg font-medium mb-2">Upload or paste a link</h3>
-            <p className="text-neutral-400 text-sm">
-              Drop in an MP4, MOV, AVI, or MKV — or just paste a YouTube URL.
-              Long-form, podcasts, interviews, anything works.
-            </p>
+    <div
+      className="min-h-screen text-white bg-cover bg-center bg-fixed relative"
+      style={{ backgroundImage: "url('/bg-home.jpg')" }}
+    >
+      <div className="fixed inset-0 bg-black/50 pointer-events-none" />
+      <div className="relative z-10">
+        <header className="border-b border-white/10 px-6 py-5 flex items-center justify-between max-w-6xl mx-auto relative">
+          <div className="flex items-center gap-10">
+            <img src="/logo.png" alt="ClipMind AI" className="h-12 w-auto" />
+            <nav className="hidden sm:flex items-center gap-7 text-[13px] text-white/70">
+              {Object.keys(menus).map((menu) => (
+                <div
+                  key={menu}
+                  className="relative"
+                  onMouseEnter={() => setOpenMenu(menu)}
+                  onMouseLeave={() => setOpenMenu(null)}
+                >
+                  <span className="hover:text-white transition cursor-pointer py-2 block">
+                    {menu}
+                  </span>
+                  {openMenu === menu && (
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 w-72 max-h-[70vh] overflow-y-auto bg-black/90 backdrop-blur-md border border-white/15 rounded-xl p-2 shadow-xl">
+                      {menus[menu].map((item) => (
+                        <div
+                          key={item.label}
+                          className="px-3 py-2.5 rounded-lg hover:bg-white/10 transition cursor-pointer"
+                        >
+                          <p className="text-[13px] text-white">{item.label}</p>
+                          <p className="text-[11px] text-white/50 mt-0.5">{item.desc}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </nav>
           </div>
-          <div>
-            <div className="text-sm text-neutral-600 mb-2">02</div>
-            <h3 className="text-lg font-medium mb-2">AI finds the best clips</h3>
-            <p className="text-neutral-400 text-sm">
-              Our AI analyzes the full transcript and identifies the moments
-              most likely to hook viewers and hold their attention.
-            </p>
+          <div className="flex items-center gap-4">
+            <Link href="/login" className="text-[13px] text-white/80 hover:text-white transition">
+              Sign in
+            </Link>
+            <Link
+              href="/signup"
+              className="bg-white text-[#0A0A0D] text-[12px] font-medium px-4 py-2 rounded-md hover:bg-white/90 transition"
+            >
+              Get started
+            </Link>
           </div>
-          <div>
-            <div className="text-sm text-neutral-600 mb-2">03</div>
-            <h3 className="text-lg font-medium mb-2">Get ready-to-post clips</h3>
-            <p className="text-neutral-400 text-sm">
-              Each clip comes with a title, hook, and platform-specific
-              captions and hashtags for TikTok, Reels, and Shorts.
-            </p>
-          </div>
-        </div>
-      </section>
+        </header>
 
-      <section className="max-w-5xl mx-auto px-6 py-20 border-t border-neutral-900">
-        <h2 className="text-2xl sm:text-3xl font-semibold text-center mb-16">
-          Everything you need to clip like a pro
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[
-            { title: "AI Hook Detection", desc: "Finds the moments with the strongest hooks, emotion, and story arcs." },
-            { title: "Virality Scoring", desc: "Every clip is ranked by predicted performance, so you know what to post first." },
-            { title: "Auto Captions & Hashtags", desc: "Platform-specific captions and hashtags generated for every clip." },
-            { title: "YouTube Import", desc: "No download needed — just paste a link and we handle the rest." },
-            { title: "Fast Rendering", desc: "Clips are cut and ready to preview in your dashboard within moments." },
-            { title: "Multiple Formats", desc: "Export in 16:9, 9:16, or 1:1 to fit any platform." },
-          ].map((feature) => (
-            <div key={feature.title} className="rounded-xl border border-neutral-900 bg-neutral-950 p-6">
-              <h3 className="font-medium mb-2">{feature.title}</h3>
-              <p className="text-sm text-neutral-400">{feature.desc}</p>
+        <section className="max-w-[540px] mx-auto px-6 pt-24 pb-16 text-center">
+          <p className="text-[14px] text-white/85 mb-4 tracking-wide font-medium">
+            New: turn a script into a video, no footage needed
+          </p>
+          <h1 className="text-[38px] leading-[1.15] tracking-[-0.5px] font-normal text-white mb-4">
+            Your best 60 seconds,
+            <br />
+            found automatically
+          </h1>
+          <p className="text-[15px] leading-[1.6] text-white/80 mb-8">
+            Upload a video or paste a YouTube link. ClipMind reads the full
+            transcript, finds the moments a stranger would actually stop
+            scrolling for, and hands you clips ready to post.
+          </p>
+          <div className="flex items-center justify-center gap-3">
+            <Link
+              href="/signup"
+              className="bg-[#3B7DD8] text-white text-[13px] font-medium px-5 py-2.5 rounded-md hover:bg-[#4A8AE0] transition"
+            >
+              Start clipping — free
+            </Link>
+          </div>
+        </section>
+
+        <section className="max-w-[720px] mx-auto px-6 py-16 border-t border-white/10 bg-black/30">
+          <h2 className="text-[13px] text-white/70 text-center mb-14 tracking-wide">
+            FROM VIDEO TO VIRAL IN THREE STEPS
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-10">
+            <div>
+              <div className="text-[11px] text-white/50 mb-3 font-mono">01</div>
+              <h3 className="text-[14px] text-white mb-2">Upload or paste a link</h3>
+              <p className="text-[12px] text-white/70 leading-[1.6]">
+                Drop in an MP4, MOV, AVI, or MKV — or just paste a YouTube URL.
+                Long-form, podcasts, interviews, all of it works.
+              </p>
             </div>
-          ))}
-        </div>
-      </section>
+            <div>
+              <div className="text-[11px] text-white/50 mb-3 font-mono">02</div>
+              <h3 className="text-[14px] text-white mb-2">AI finds the best clips</h3>
+              <p className="text-[12px] text-white/70 leading-[1.6]">
+                ClipMind reads the full transcript and ranks the moments most
+                likely to hold someone's attention.
+              </p>
+            </div>
+            <div>
+              <div className="text-[11px] text-white/50 mb-3 font-mono">03</div>
+              <h3 className="text-[14px] text-white mb-2">Get ready-to-post clips</h3>
+              <p className="text-[12px] text-white/70 leading-[1.6]">
+                Each clip comes captioned, scored, and written up with
+                platform-specific captions and hashtags.
+              </p>
+            </div>
+          </div>
+        </section>
 
-      <section className="max-w-3xl mx-auto px-6 py-24 text-center border-t border-neutral-900">
-        <h2 className="text-3xl font-semibold mb-4">Ready to go viral?</h2>
-        <p className="text-neutral-400 mb-8">
-          Create your first clip in minutes — no credit card required.
-        </p>
-        <Link href="/signup" className="rounded-lg bg-white text-black font-medium px-6 py-3 hover:bg-neutral-200 transition inline-block">
-          Get Started Free
-        </Link>
-      </section>
+        <section className="max-w-[640px] mx-auto px-6 py-16">
+          <div className="bg-black/50 backdrop-blur-md border border-white/15 rounded-[10px] overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-white/15">
+              <div className="w-[7px] h-[7px] rounded-full bg-white/30" />
+              <div className="w-[7px] h-[7px] rounded-full bg-white/30" />
+              <div className="w-[7px] h-[7px] rounded-full bg-white/30" />
+              <span className="text-[11px] text-white/60 ml-2">clipmind.ai/dashboard</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3">
+              <div className="p-5 border-b sm:border-b-0 sm:border-r border-white/15">
+                <p className="text-[10px] text-white/60 mb-3.5">YOUR PROJECTS</p>
+                <div className="text-[12px] text-white mb-2.5">Podcast ep. 12</div>
+                <div className="text-[12px] text-white/70 mb-2.5">Interview cut</div>
+                <div className="text-[12px] text-white/70">Keynote 2026</div>
+              </div>
+              <div className="p-5 sm:col-span-2">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-[12px] text-white">Clip 2 of 5</span>
+                  <span className="text-[11px] text-[#8FBBF0] bg-[#1C2E48] px-2.5 py-1 rounded">
+                    99 · likely to hook viewers
+                  </span>
+                </div>
+                <div className="h-20 bg-black/50 border border-white/15 rounded-lg flex items-center justify-center mb-3.5">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8FBBF0" strokeWidth="2">
+                    <polygon points="6 3 20 12 6 21 6 3" />
+                  </svg>
+                </div>
+                <div className="h-[3px] bg-white/15 rounded-full overflow-hidden mb-2">
+                  <div className="w-[64%] h-full bg-[#3B7DD8]" />
+                </div>
+                <p className="text-[11px] text-white/60">Rendering — captions burning in now</p>
+              </div>
+            </div>
+          </div>
+        </section>
 
-      <footer className="border-t border-neutral-900 py-8 text-center text-sm text-neutral-600">
-        © 2026 ClipMind AI. All rights reserved.
-      </footer>
+        <section className="max-w-[720px] mx-auto px-6 py-16 border-t border-white/10 bg-black/30">
+          <h2 className="text-[13px] text-white/70 text-center mb-14 tracking-wide">
+            EVERYTHING YOU NEED TO CLIP LIKE A PRO
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-10">
+            {[
+              { title: "AI hook detection", desc: "Finds the moments with the strongest hooks, emotion, and story arcs." },
+              { title: "Virality scoring", desc: "Every clip is ranked by predicted performance, so you know what to post first." },
+              { title: "Auto captions & hashtags", desc: "Platform-specific captions and hashtags generated for every clip." },
+              { title: "YouTube import", desc: "No download needed — just paste a link and we handle the rest." },
+              { title: "Fast rendering", desc: "Clips are cut and ready to preview in your dashboard within moments." },
+              { title: "Multiple formats", desc: "Export in 16:9, 9:16, or 1:1 to fit any platform." },
+            ].map((feature) => (
+              <div key={feature.title}>
+                <p className="text-[13px] text-white mb-1.5">{feature.title}</p>
+                <p className="text-[12px] text-white/70 leading-[1.6]">{feature.desc}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="max-w-[480px] mx-auto px-6 py-24 text-center">
+          <h2 className="text-[24px] font-normal text-white mb-3 tracking-[-0.3px]">
+            Ready to go viral?
+          </h2>
+          <p className="text-[14px] text-white/80 mb-8">
+            Create your first clip in minutes — no credit card required.
+          </p>
+          <Link
+            href="/signup"
+            className="inline-block bg-[#3B7DD8] text-white text-[13px] font-medium px-6 py-3 rounded-md hover:bg-[#4A8AE0] transition"
+          >
+            Get started free
+          </Link>
+        </section>
+
+        <footer className="border-t border-white/10 py-8 text-center text-[12px] text-white/60 bg-black/30">
+          © 2026 ClipMind AI. All rights reserved.
+        </footer>
+      </div>
     </div>
   );
 }

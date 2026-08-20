@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 
 declare global {
@@ -44,9 +45,10 @@ export default function SignupPage() {
           callback: handleGoogleResponse,
         });
         window.google.accounts.id.renderButton(googleButtonRef.current, {
-          theme: "outline",
+          theme: "filled_black",
           size: "large",
           width: 320,
+          shape: "rectangular",
         });
         clearInterval(interval);
       }
@@ -67,7 +69,6 @@ export default function SignupPage() {
         body: JSON.stringify({ email, password, full_name: fullName }),
       });
 
-      // Don't log in yet — the account needs email verification first.
       router.push(`/verify-email?email=${encodeURIComponent(email)}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Signup failed.");
@@ -77,59 +78,70 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black px-4">
-      <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-semibold text-white mb-6 text-center">
-          Create your ClipMind AI account
+    <div
+      className="min-h-screen relative flex items-center justify-center px-4 overflow-hidden bg-cover bg-center"
+      style={{ backgroundImage: "url('/bg-signup.jpg')" }}
+    >
+      <div className="absolute inset-0 bg-black/55" />
+      <div className="relative z-10 w-full max-w-[380px] px-2 py-6">
+        <Link href="/" className="flex justify-center mb-8">
+          <img src="/logo.png" alt="ClipMind AI" className="h-10 w-auto" />
+        </Link>
+
+        <h1 className="text-[22px] font-normal text-white mb-1 text-center tracking-[-0.3px]">
+          Create your account
         </h1>
+        <p className="text-[13px] text-white/70 text-center mb-8">
+          Your first clip is a few minutes away
+        </p>
 
         <div className="flex justify-center mb-6">
           <div ref={googleButtonRef} />
         </div>
 
         <div className="flex items-center gap-3 mb-6">
-          <div className="flex-1 h-px bg-neutral-800" />
-          <span className="text-xs text-neutral-500">OR</span>
-          <div className="flex-1 h-px bg-neutral-800" />
+          <div className="flex-1 h-px bg-white/25" />
+          <span className="text-[11px] text-white/60">OR</span>
+          <div className="flex-1 h-px bg-white/25" />
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm text-neutral-400 mb-1">Full name</label>
+            <label className="block text-[12px] text-white/80 mb-1.5">Full name</label>
             <input
               type="text"
               required
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className="w-full rounded-lg bg-neutral-900 border border-neutral-800 text-white px-4 py-2.5 outline-none focus:border-neutral-600"
+              className="w-full rounded-xl bg-black/30 border border-white/30 text-white text-[14px] px-4 py-3 outline-none focus:border-white/70 transition"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-neutral-400 mb-1">Email</label>
+            <label className="block text-[12px] text-white/80 mb-1.5">Email address</label>
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg bg-neutral-900 border border-neutral-800 text-white px-4 py-2.5 outline-none focus:border-neutral-600"
+              className="w-full rounded-xl bg-black/30 border border-white/30 text-white text-[14px] px-4 py-3 outline-none focus:border-white/70 transition"
             />
           </div>
 
           <div>
-            <label className="block text-sm text-neutral-400 mb-1">Password</label>
+            <label className="block text-[12px] text-white/80 mb-1.5">Password</label>
             <input
               type="password"
               required
               minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg bg-neutral-900 border border-neutral-800 text-white px-4 py-2.5 outline-none focus:border-neutral-600"
+              className="w-full rounded-xl bg-black/30 border border-white/30 text-white text-[14px] px-4 py-3 outline-none focus:border-white/70 transition"
             />
           </div>
 
           {error && (
-            <p className="text-sm text-red-400 bg-red-950/40 border border-red-900 rounded-lg px-3 py-2">
+            <p className="text-[13px] text-white bg-[#7A2E2E]/80 border border-[#A44] rounded-xl px-3 py-2">
               {error}
             </p>
           )}
@@ -137,17 +149,17 @@ export default function SignupPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-white text-black font-medium py-2.5 hover:bg-neutral-200 transition disabled:opacity-50"
+            className="w-full rounded-xl bg-[#2D5A9B] text-white text-[14px] font-medium py-3 hover:bg-[#3468AC] transition disabled:opacity-50"
           >
             {loading ? "Creating account..." : "Sign up"}
           </button>
         </form>
 
-        <p className="text-sm text-neutral-500 text-center mt-6">
+        <p className="text-[13px] text-white/70 text-center mt-8">
           Already have an account?{" "}
-          <a href="/login" className="text-white underline">
+          <Link href="/login" className="text-white hover:underline transition font-medium">
             Log in
-          </a>
+          </Link>
         </p>
       </div>
     </div>
