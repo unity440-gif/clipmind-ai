@@ -2,10 +2,8 @@
 YouTube downloader service using yt-dlp.
 Downloads a YouTube video to local storage, returning the same kind of
 metadata our upload flow produces — so both paths feed the same pipeline.
-Uses the Android player client, which bypasses YouTube's "sign in to
-confirm you're not a bot" check tied to the web client. No proxy is
-needed — proxy support remains available (via PROXY_* env vars) but is
-currently unused, since the Android client trick alone works reliably.
+Tries multiple player client identities in order — YouTube's bot detection
+targets one client type at a time, so falling back to another often works.
 """
 
 import uuid
@@ -33,15 +31,12 @@ def download_youtube_video(url: str, video_id: uuid.UUID) -> dict:
         "no_warnings": True,
         "extractor_args": {
             "youtube": {
-                "player_client": ["android"],
+                "player_client": ["android", "ios", "tv"],
             }
         },
     }
 
     if settings.PROXY_HOST and settings.PROXY_PORT:
-        # socks5h (not socks5) so DNS resolution also happens through the
-        # proxy — more reliable for HTTPS/TLS-heavy traffic like YouTube's,
-        # versus a plain HTTP proxy which struggled with CONNECT tunneling.
         proxy_url = (
             f"socks5h://{settings.PROXY_USERNAME}:{settings.PROXY_PASSWORD}"
             f"@{settings.PROXY_HOST}:{settings.PROXY_PORT}"
