@@ -31,7 +31,7 @@ def download_youtube_video(url: str, video_id: uuid.UUID) -> dict:
         "no_warnings": True,
         "extractor_args": {
             "youtube": {
-                "player_client": ["android", "ios", "tv"],
+                "player_client": ["tv", "web_safari", "android", "ios"],
             }
         },
     }
