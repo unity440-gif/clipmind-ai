@@ -22,7 +22,7 @@ from models.video import Video
 from schemas.video import VideoResponse, InitUploadRequest, InitUploadResponse, CompleteUploadRequest
 from api.dependencies import get_current_user
 from workers.tasks import extract_audio_task
-from services.youtube_downloader import download_youtube_video
+from services.youtube_downloader import download_youtube_video, YouTubeFetchError
 from services.storage_service import upload_file, delete_file
 
 router = APIRouter(prefix="/projects", tags=["videos"])
@@ -80,7 +80,7 @@ async def upload_video(
 
     r2_key = f"videos/{video_id}{original_extension}"
     upload_file(str(local_path), r2_key)
-    os.remove(local_path)  # clean up local scratch copy now that it's safely in R2
+    os.remove(local_path)
 
     video = Video(
         id=video_id,
@@ -253,10 +253,10 @@ def add_video_from_youtube(
 
     try:
         result = download_youtube_video(youtube_url, video_id)
-    except Exception as e:
+    except YouTubeFetchError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to download YouTube video: {e}",
+            detail=e.user_message,
         )
 
     local_path = result["storage_path"]
