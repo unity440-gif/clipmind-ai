@@ -2,8 +2,6 @@
 YouTube downloader service using yt-dlp.
 Downloads a YouTube video to local storage, returning the same kind of
 metadata our upload flow produces — so both paths feed the same pipeline.
-Tries multiple player client identities in order — YouTube's bot detection
-targets one client type at a time, so falling back to another often works.
 """
 
 import uuid
@@ -31,7 +29,8 @@ def download_youtube_video(url: str, video_id: uuid.UUID) -> dict:
         "no_warnings": True,
         "extractor_args": {
             "youtube": {
-                "player_client": ["tv", "web_safari", "android", "ios"],
+                "player_client": ["android"],
+                "player_skip": ["webpage", "configs"],
             }
         },
     }
