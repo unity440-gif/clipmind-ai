@@ -23,6 +23,7 @@ from schemas.video import VideoResponse, InitUploadRequest, InitUploadResponse, 
 from api.dependencies import get_current_user
 from workers.tasks import extract_audio_task
 from services.youtube_downloader import download_youtube_video, YouTubeFetchError
+from services.instagram_downloader import download_instagram_reel, InstagramFetchError
 from services.storage_service import upload_file, delete_file
 
 router = APIRouter(prefix="/projects", tags=["videos"])
@@ -258,6 +259,55 @@ def add_video_from_youtube(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=e.user_message,
         )
+
+    local_path = result["storage_path"]
+    extension = Path(local_path).suffix
+    r2_key = f"videos/{video_id}{extension}"
+    upload_file(local_path, r2_key)
+    os.remove(local_path)
+
+    video = Video(
+        id=video_id,
+        project_id=project.id,
+        original_filename=result["original_filename"],
+        storage_path=r2_key,
+        file_size_bytes=result["file_size_bytes"],
+    )
+    db.add(video)
+    project.status = "uploaded"
+    db.commit()
+    db.refresh(video)
+
+    extract_audio_task.delay(str(video.id))
+
+    return video
+
+
+@router.post(
+    "/{project_id}/videos/from-instagram",
+    response_model=VideoResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def add_video_from_instagram(
+    project_id: uuid.UUID,
+    instagram_url: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    project = (
+        db.query(Project)
+        .filter(Project.id == project_id, Project.user_id == current_user.id)
+        .first()
+    )
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found.")
+
+    video_id = uuid.uuid4()
+
+    try:
+        result = download_instagram_reel(instagram_url, video_id)
+    except InstagramFetchError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.user_message)
 
     local_path = result["storage_path"]
     extension = Path(local_path).suffix
