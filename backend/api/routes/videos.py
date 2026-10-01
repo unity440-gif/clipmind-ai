@@ -1,7 +1,7 @@
 """
 Video routes.
-Handles uploading a raw video file OR downloading one from a YouTube URL
-into an existing project. Files are stored in Cloudflare R2, not local
+Handles uploading a raw video file OR downloading one from a YouTube/Instagram
+URL into an existing project. Files are stored in Cloudflare R2, not local
 disk, so they survive redeploys. Large files use chunked upload to avoid
 hitting Railway's ~5 minute hard HTTP timeout on a single request.
 """
@@ -24,7 +24,7 @@ from api.dependencies import get_current_user
 from workers.tasks import extract_audio_task
 from services.youtube_downloader import download_youtube_video, YouTubeFetchError
 from services.instagram_downloader import download_instagram_reel, InstagramFetchError
-from services.storage_service import upload_file, delete_file
+from services.storage_service import upload_file, delete_file, get_public_url
 
 router = APIRouter(prefix="/projects", tags=["videos"])
 
@@ -40,10 +40,6 @@ async def upload_video(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Direct (non-chunked) upload — still used for smaller files.
-    Saves temporarily to local disk, uploads to R2, then removes the local copy.
-    """
     project = (
         db.query(Project)
         .filter(Project.id == project_id, Project.user_id == current_user.id)
@@ -144,11 +140,6 @@ async def upload_chunk(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Chunks are still assembled on local disk temporarily (this is scratch
-    space, not the final destination) — only the finished, reassembled
-    video gets uploaded to R2, in complete_chunked_upload below.
-    """
     project = (
         db.query(Project)
         .filter(Project.id == project_id, Project.user_id == current_user.id)
@@ -176,10 +167,6 @@ def complete_chunked_upload(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Reassembles chunks into a local temp file, uploads that final file to
-    R2, then deletes the local scratch copy.
-    """
     project = (
         db.query(Project)
         .filter(Project.id == project_id, Project.user_id == current_user.id)
@@ -327,9 +314,26 @@ def add_video_from_instagram(
     db.commit()
     db.refresh(video)
 
-    extract_audio_task.delay(str(video.id))
-
     return video
+
+
+@router.get("/{project_id}/videos/{video_id}/download-url")
+def get_video_download_url(
+    project_id: uuid.UUID,
+    video_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    video = (
+        db.query(Video)
+        .join(Project)
+        .filter(Video.id == video_id, Project.id == project_id, Project.user_id == current_user.id)
+        .first()
+    )
+    if not video:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Video not found.")
+
+    return {"download_url": get_public_url(video.storage_path)}
 
 
 @router.post("/{project_id}/videos/{video_id}/set-test-transcript")
