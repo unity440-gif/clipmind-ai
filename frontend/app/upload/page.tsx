@@ -23,6 +23,7 @@ export default function UploadPage() {
   const [progress, setProgress] = useState(0);
   const [statusText, setStatusText] = useState("");
   const [error, setError] = useState("");
+  const [downloadUrl, setDownloadUrl] = useState("");
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
@@ -76,6 +77,7 @@ export default function UploadPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setDownloadUrl("");
 
     if (mode === "file" && !file) {
       setError("Please choose a video file.");
@@ -108,17 +110,23 @@ export default function UploadPage() {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
         });
+        router.push("/dashboard");
       } else if (mode === "instagram") {
         const params = new URLSearchParams({ instagram_url: instagramUrl.trim() });
-        await apiFetch(`/projects/${project.id}/videos/from-instagram?${params.toString()}`, {
+        const video = await apiFetch(`/projects/${project.id}/videos/from-instagram?${params.toString()}`, {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
         });
+
+        const urlData = await apiFetch(
+          `/projects/${project.id}/videos/${video.id}/download-url`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setDownloadUrl(urlData.download_url);
       } else {
         await uploadInChunks(project.id, file as File, token);
+        router.push("/dashboard");
       }
-
-      router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -166,107 +174,133 @@ export default function UploadPage() {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-[12px] text-[#9AA7B8] mb-1.5">Project title</label>
-            <input
-              type="text"
-              required
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. My Podcast Episode 12"
-              className="w-full rounded-lg bg-[#0F1622] border border-[#22304A] text-white text-[14px] px-3.5 py-2.5 outline-none focus:border-[#3B7DD8] transition"
-            />
-          </div>
-
-          {mode === "file" && (
-            <div
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragActive(true);
-              }}
-              onDragLeave={() => setDragActive(false)}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={`rounded-xl border-[1.5px] border-dashed px-6 py-11 text-center cursor-pointer transition ${
-                dragActive ? "border-[#3B7DD8] bg-[#0F1622]" : "border-[#22304A] hover:border-[#2A3B52]"
-              }`}
+        {downloadUrl ? (
+          <div className="rounded-xl border border-[#22304A] bg-[#0F1622] px-6 py-8 text-center">
+            <p className="text-[13px] text-[#DCE6F2] mb-4">Your video is ready.</p>
+            <a
+              href={downloadUrl}
+              download
+              className="inline-block rounded-lg bg-[#3B7DD8] text-white text-[13px] font-medium py-2.5 px-6 hover:bg-[#4A8AE0] transition"
             >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".mp4,.mov,.avi,.mkv"
-                className="hidden"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              />
-              {file ? (
-                <p className="text-[13px] text-[#DCE6F2]">
-                  {file.name} ({(file.size / (1024 * 1024)).toFixed(0)} MB)
-                </p>
-              ) : (
-                <>
-                  <p className="text-[13px] text-[#9AA7B8] mb-1">Drag and drop a video here</p>
-                  <p className="text-[11px] text-[#5C6577]">or click to browse — MP4, MOV, AVI, MKV</p>
-                </>
-              )}
-            </div>
-          )}
-
-          {mode === "youtube" && (
+              Download video
+            </a>
+            <button
+              type="button"
+              onClick={() => {
+                setDownloadUrl("");
+                setInstagramUrl("");
+                setTitle("");
+              }}
+              className="block mx-auto mt-4 text-[12px] text-[#6E7A8C] hover:text-[#DCE6F2]"
+            >
+              Fetch another
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-[12px] text-[#9AA7B8] mb-1.5">YouTube URL</label>
+              <label className="block text-[12px] text-[#9AA7B8] mb-1.5">Project title</label>
               <input
-                type="url"
-                value={youtubeUrl}
-                onChange={(e) => setYoutubeUrl(e.target.value)}
-                placeholder="https://www.youtube.com/watch?v=..."
+                type="text"
+                required
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. My Podcast Episode 12"
                 className="w-full rounded-lg bg-[#0F1622] border border-[#22304A] text-white text-[14px] px-3.5 py-2.5 outline-none focus:border-[#3B7DD8] transition"
               />
             </div>
-          )}
 
-          {mode === "instagram" && (
-            <div>
-              <label className="block text-[12px] text-[#9AA7B8] mb-1.5">Instagram Reel URL</label>
-              <input
-                type="url"
-                value={instagramUrl}
-                onChange={(e) => setInstagramUrl(e.target.value)}
-                placeholder="https://www.instagram.com/reel/..."
-                className="w-full rounded-lg bg-[#0F1622] border border-[#22304A] text-white text-[14px] px-3.5 py-2.5 outline-none focus:border-[#3B7DD8] transition"
-              />
-            </div>
-          )}
-
-          {uploading && mode === "file" && (
-            <div>
-              <div className="w-full bg-[#0F1622] rounded-full h-1.5 overflow-hidden mb-1.5">
-                <div className="bg-[#3B7DD8] h-full transition-all" style={{ width: `${progress}%` }} />
+            {mode === "file" && (
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragActive(true);
+                }}
+                onDragLeave={() => setDragActive(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`rounded-xl border-[1.5px] border-dashed px-6 py-11 text-center cursor-pointer transition ${
+                  dragActive ? "border-[#3B7DD8] bg-[#0F1622]" : "border-[#22304A] hover:border-[#2A3B52]"
+                }`}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".mp4,.mov,.avi,.mkv"
+                  className="hidden"
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                />
+                {file ? (
+                  <p className="text-[13px] text-[#DCE6F2]">
+                    {file.name} ({(file.size / (1024 * 1024)).toFixed(0)} MB)
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-[13px] text-[#9AA7B8] mb-1">Drag and drop a video here</p>
+                    <p className="text-[11px] text-[#5C6577]">or click to browse — MP4, MOV, AVI, MKV</p>
+                  </>
+                )}
               </div>
-              <p className="text-[11px] text-[#6E7A8C]">{statusText}</p>
-            </div>
-          )}
+            )}
 
-          {error && (
-            <p className="text-[13px] text-[#D98787] bg-[#2A1616]/60 border border-[#4A2222] rounded-lg px-3 py-2">
-              {error}
-            </p>
-          )}
+            {mode === "youtube" && (
+              <div>
+                <label className="block text-[12px] text-[#9AA7B8] mb-1.5">YouTube URL</label>
+                <input
+                  type="url"
+                  value={youtubeUrl}
+                  onChange={(e) => setYoutubeUrl(e.target.value)}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  className="w-full rounded-lg bg-[#0F1622] border border-[#22304A] text-white text-[14px] px-3.5 py-2.5 outline-none focus:border-[#3B7DD8] transition"
+                />
+              </div>
+            )}
 
-          <button
-            type="submit"
-            disabled={uploading}
-            className="w-full rounded-lg bg-[#3B7DD8] text-white text-[13px] font-medium py-2.5 hover:bg-[#4A8AE0] transition disabled:opacity-50"
-          >
-            {uploading
-              ? mode === "youtube"
-                ? "Downloading from YouTube..."
+            {mode === "instagram" && (
+              <div>
+                <label className="block text-[12px] text-[#9AA7B8] mb-1.5">Instagram Reel URL</label>
+                <input
+                  type="url"
+                  value={instagramUrl}
+                  onChange={(e) => setInstagramUrl(e.target.value)}
+                  placeholder="https://www.instagram.com/reel/..."
+                  className="w-full rounded-lg bg-[#0F1622] border border-[#22304A] text-white text-[14px] px-3.5 py-2.5 outline-none focus:border-[#3B7DD8] transition"
+                />
+              </div>
+            )}
+
+            {uploading && mode === "file" && (
+              <div>
+                <div className="w-full bg-[#0F1622] rounded-full h-1.5 overflow-hidden mb-1.5">
+                  <div className="bg-[#3B7DD8] h-full transition-all" style={{ width: `${progress}%` }} />
+                </div>
+                <p className="text-[11px] text-[#6E7A8C]">{statusText}</p>
+              </div>
+            )}
+
+            {error && (
+              <p className="text-[13px] text-[#D98787] bg-[#2A1616]/60 border border-[#4A2222] rounded-lg px-3 py-2">
+                {error}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={uploading}
+              className="w-full rounded-lg bg-[#3B7DD8] text-white text-[13px] font-medium py-2.5 hover:bg-[#4A8AE0] transition disabled:opacity-50"
+            >
+              {uploading
+                ? mode === "youtube"
+                  ? "Downloading from YouTube..."
+                  : mode === "instagram"
+                  ? "Fetching from Instagram..."
+                  : `Uploading... ${progress}%`
                 : mode === "instagram"
-                ? "Downloading from Instagram..."
-                : `Uploading... ${progress}%`
-              : "Create Project"}
-          </button>
-        </form>
+                ? "Fetch video"
+                : "Create Project"}
+            </button>
+          </form>
+        )}
       </main>
     </div>
   );
