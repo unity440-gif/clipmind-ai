@@ -13,10 +13,11 @@ export default function UploadPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [mode, setMode] = useState<"file" | "youtube">("file");
+  const [mode, setMode] = useState<"file" | "youtube" | "instagram">("file");
   const [title, setTitle] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [instagramUrl, setInstagramUrl] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -84,6 +85,10 @@ export default function UploadPage() {
       setError("Please paste a YouTube URL.");
       return;
     }
+    if (mode === "instagram" && !instagramUrl.trim()) {
+      setError("Please paste an Instagram Reel URL.");
+      return;
+    }
 
     setUploading(true);
     setProgress(0);
@@ -100,6 +105,12 @@ export default function UploadPage() {
       if (mode === "youtube") {
         const params = new URLSearchParams({ youtube_url: youtubeUrl.trim() });
         await apiFetch(`/projects/${project.id}/videos/from-youtube?${params.toString()}`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } else if (mode === "instagram") {
+        const params = new URLSearchParams({ instagram_url: instagramUrl.trim() });
+        await apiFetch(`/projects/${project.id}/videos/from-instagram?${params.toString()}`, {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -122,7 +133,7 @@ export default function UploadPage() {
       <main className="max-w-[480px] mx-auto px-6 pt-16 pb-16">
         <p className="text-[19px] text-[#F4F6F8] mb-1">Clip a video</p>
         <p className="text-[12px] text-[#6E7A8C] mb-8">
-          Upload a file or paste a YouTube link to get started.
+          Upload a file, or paste a YouTube or Instagram Reel link to get started.
         </p>
 
         <div className="flex gap-1 mb-6 bg-[#0F1622] border border-[#1A2434] rounded-lg p-1">
@@ -142,7 +153,16 @@ export default function UploadPage() {
               mode === "youtube" ? "bg-[#3B7DD8] text-white" : "text-[#6E7A8C] hover:text-[#DCE6F2]"
             }`}
           >
-            Paste YouTube URL
+            YouTube
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("instagram")}
+            className={`flex-1 rounded-md py-2 text-[13px] font-medium transition ${
+              mode === "instagram" ? "bg-[#3B7DD8] text-white" : "text-[#6E7A8C] hover:text-[#DCE6F2]"
+            }`}
+          >
+            Instagram
           </button>
         </div>
 
@@ -159,7 +179,7 @@ export default function UploadPage() {
             />
           </div>
 
-          {mode === "file" ? (
+          {mode === "file" && (
             <div
               onDragOver={(e) => {
                 e.preventDefault();
@@ -190,7 +210,9 @@ export default function UploadPage() {
                 </>
               )}
             </div>
-          ) : (
+          )}
+
+          {mode === "youtube" && (
             <div>
               <label className="block text-[12px] text-[#9AA7B8] mb-1.5">YouTube URL</label>
               <input
@@ -198,6 +220,19 @@ export default function UploadPage() {
                 value={youtubeUrl}
                 onChange={(e) => setYoutubeUrl(e.target.value)}
                 placeholder="https://www.youtube.com/watch?v=..."
+                className="w-full rounded-lg bg-[#0F1622] border border-[#22304A] text-white text-[14px] px-3.5 py-2.5 outline-none focus:border-[#3B7DD8] transition"
+              />
+            </div>
+          )}
+
+          {mode === "instagram" && (
+            <div>
+              <label className="block text-[12px] text-[#9AA7B8] mb-1.5">Instagram Reel URL</label>
+              <input
+                type="url"
+                value={instagramUrl}
+                onChange={(e) => setInstagramUrl(e.target.value)}
+                placeholder="https://www.instagram.com/reel/..."
                 className="w-full rounded-lg bg-[#0F1622] border border-[#22304A] text-white text-[14px] px-3.5 py-2.5 outline-none focus:border-[#3B7DD8] transition"
               />
             </div>
@@ -226,6 +261,8 @@ export default function UploadPage() {
             {uploading
               ? mode === "youtube"
                 ? "Downloading from YouTube..."
+                : mode === "instagram"
+                ? "Downloading from Instagram..."
                 : `Uploading... ${progress}%`
               : "Create Project"}
           </button>
