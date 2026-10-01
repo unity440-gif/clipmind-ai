@@ -63,6 +63,7 @@ export default function ProjectDetailPage() {
   const [savingCaptions, setSavingCaptions] = useState(false);
   const [captionError, setCaptionError] = useState("");
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadingVideoId, setDownloadingVideoId] = useState<string | null>(null);
 
   async function loadData() {
     const token = getToken();
@@ -111,6 +112,21 @@ export default function ProjectDetailPage() {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
+
+  async function handleDownloadOriginalVideo(videoId: string) {
+    setDownloadingVideoId(videoId);
+    try {
+      const token = getToken();
+      const data = await apiFetch(`/projects/${projectId}/videos/${videoId}/download-url`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      window.location.href = data.download_url;
+    } catch {
+      alert("Download failed. Try again.");
+    } finally {
+      setDownloadingVideoId(null);
+    }
+  }
 
   async function handleDetectHooks() {
     if (videos.length === 0) return;
@@ -219,6 +235,26 @@ export default function ProjectDetailPage() {
         <button onClick={() => router.push("/dashboard")} className="text-[12px] text-[#6E7A8C] hover:text-[#DCE6F2] transition mb-6">
           ← Back
         </button>
+
+        {videos.length > 0 ? (
+          <div className="rounded-xl bg-[#0F1622] border border-[#1A2434] p-4 mb-6">
+            <p className="text-[12px] text-[#9AA7B8] mb-3">Original video</p>
+            {videos.map((video) => (
+              <div key={video.id} className="flex items-center justify-between gap-3">
+                <p className="text-[13px] text-[#DCE6F2] truncate">
+                  {video.original_filename || "video.mp4"}
+                </p>
+                <button
+                  onClick={() => handleDownloadOriginalVideo(video.id)}
+                  disabled={downloadingVideoId === video.id}
+                  className="shrink-0 text-[11px] rounded-md bg-[#3B7DD8] text-white px-3 py-1.5 hover:bg-[#4A8AE0] transition disabled:opacity-50"
+                >
+                  {downloadingVideoId === video.id ? "Preparing..." : "Download video"}
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
 
         <p className="text-[19px] text-[#F4F6F8] mb-1">Generated clips</p>
         <p className="text-[12px] text-[#6E7A8C] mb-6">
