@@ -333,7 +333,7 @@ def get_video_download_url(
     if not video:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Video not found.")
 
-    return {"download_url": get_public_url(video.storage_path)}
+    return {"download_url": get_public_url(video.storage_path, video.original_filename)}
 
 
 @router.post("/{project_id}/videos/{video_id}/set-test-transcript")

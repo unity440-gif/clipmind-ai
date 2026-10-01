@@ -11,9 +11,6 @@ from boto3.s3.transfer import TransferConfig
 
 from config.settings import settings
 
-# Force simple single-part uploads instead of multipart — some R2 API
-# tokens have a permissions bug specifically on CreateMultipartUpload
-# even when otherwise correctly scoped for read/write.
 _UPLOAD_CONFIG = TransferConfig(multipart_threshold=1024 * 1024 * 1024 * 5)  # 5GB
 
 
@@ -35,9 +32,9 @@ def get_client():
 
 def upload_file(local_path: str, key: str) -> str:
     """
-    Uploads a local file to R2 under the given key (like a filename/path
-    inside the bucket). Returns that same key, which is what we'll store
-    in the database as the file's "storage_path" going forward.
+    Uploads a local file to R2 under the given key. Returns that same
+    key, which is what we'll store in the database as the file's
+    "storage_path" going forward.
     """
     client = get_client()
     client.upload_file(local_path, settings.R2_BUCKET_NAME, key, Config=_UPLOAD_CONFIG)
@@ -64,15 +61,21 @@ def file_exists(key: str) -> bool:
         return False
 
 
-def get_public_url(key: str) -> str:
+def get_public_url(key: str, filename: str = "video.mp4") -> str:
     """
     Generates a time-limited signed URL for reading a file directly —
     used so the browser can stream video clips straight from R2
-    instead of routing through your backend.
+    instead of routing through your backend. Passing a Content-Disposition
+    header here makes the browser actually save the file (instead of just
+    opening it inline) when the link is clicked/tapped on mobile.
     """
     client = get_client()
     return client.generate_presigned_url(
         "get_object",
-        Params={"Bucket": settings.R2_BUCKET_NAME, "Key": key},
+        Params={
+            "Bucket": settings.R2_BUCKET_NAME,
+            "Key": key,
+            "ResponseContentDisposition": f'attachment; filename="{filename}"',
+        },
         ExpiresIn=3600,  # 1 hour
     )
