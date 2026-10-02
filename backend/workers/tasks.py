@@ -25,7 +25,7 @@ from services.storage_service import upload_file, download_file
 from services.scene_breakdown_service import break_down_script
 from services.image_generation_service import generate_image
 from services.tts_service import generate_speech
-from services.video_compiler_service import create_scene_clip, concatenate_clips
+from services.video_compiler_service import create_scene_clip, concatenate_clips_with_transitions
 
 LOCAL_SCRATCH_DIR = Path("uploads")
 
@@ -151,9 +151,6 @@ def render_clip_task(clip_id: str):
                     output_srt_path=str(local_subtitle_path),
                 )
 
-                # Save a copy of the auto-generated captions to R2 too,
-                # so the caption editor has something to load later —
-                # otherwise this file only ever existed locally and briefly.
                 upload_file(str(local_subtitle_path), f"clips/clip_{clip.id}.srt")
 
             cut_clip(
@@ -285,8 +282,8 @@ def generate_scene_assets_task(scene_id: str):
 def compile_script_video_task(script_project_id: str):
     """
     Background job: downloads every scene's image + audio, creates a
-    Ken-Burns-style clip for each, concatenates them into one final video,
-    and uploads it to R2.
+    Ken-Burns-style clip for each, concatenates them into one final video
+    with crossfade transitions between scenes, and uploads it to R2.
     """
     db = SessionLocal()
     try:
@@ -323,7 +320,12 @@ def compile_script_video_task(script_project_id: str):
                 os.remove(local_audio)
 
             final_output = LOCAL_SCRATCH_DIR / f"compiled_{project.id}.mp4"
-            concatenate_clips(scene_clip_paths, str(final_output))
+            concatenate_clips_with_transitions(
+                scene_clip_paths,
+                str(final_output),
+                transition="fade",
+                transition_duration=0.5,
+            )
 
             r2_key = f"compiled/{project.id}.mp4"
             upload_file(str(final_output), r2_key)
