@@ -13,6 +13,14 @@ ASPECT_RATIO_FILTERS = {
     "1:1": "crop='min(iw,ih)':'min(iw,ih)'",
 }
 
+# How big a gap between spoken segments has to be (in seconds) before
+# it's treated as "dead air" worth cutting, per intensity level.
+SILENCE_GAP_THRESHOLDS = {
+    "low": 1.5,
+    "medium": 1.0,
+    "high": 0.6,
+}
+
 
 def extract_audio(video_path: str, output_path: str) -> None:
     command = [
@@ -69,9 +77,6 @@ def cut_clip(
         video_filters.append(ASPECT_RATIO_FILTERS[aspect_ratio])
 
     if subtitle_path:
-        # Style: white bold text, black outline, positioned near the bottom.
-        # FFmpeg's subtitles filter needs the path escaped carefully since
-        # colons and backslashes have special meaning inside filter strings.
         escaped_path = subtitle_path.replace("\\", "\\\\").replace(":", "\\:")
         style = "FontSize=14,PrimaryColour=&HFFFFFF,OutlineColour=&H000000,BorderStyle=1,Outline=2,Alignment=2"
         video_filters.append(f"subtitles='{escaped_path}':force_style='{style}'")
@@ -94,3 +99,90 @@ def cut_clip(
 
     if result.returncode != 0:
         raise RuntimeError(f"FFmpeg clip cutting failed: {result.stderr}")
+
+
+def get_ranges_with_silence_removed(
+    segments: list[dict],
+    clip_start: float,
+    clip_end: float,
+    intensity: str = "medium",
+) -> list[tuple[float, float]]:
+    """
+    Given the full video's transcript segments and a clip's start/end
+    range, returns a list of (start, end) sub-ranges to KEEP — skipping
+    gaps between segments that are longer than the intensity's threshold.
+    """
+    gap_threshold = SILENCE_GAP_THRESHOLDS.get(intensity, SILENCE_GAP_THRESHOLDS["medium"])
+
+    relevant = [
+        s for s in segments
+        if s["end"] > clip_start and s["start"] < clip_end
+    ]
+    relevant.sort(key=lambda s: s["start"])
+
+    if not relevant:
+        return [(clip_start, clip_end)]
+
+    ranges_to_keep = []
+    current_start = max(clip_start, relevant[0]["start"])
+    previous_end = current_start
+
+    for segment in relevant:
+        seg_start = max(segment["start"], clip_start)
+        seg_end = min(segment["end"], clip_end)
+
+        gap = seg_start - previous_end
+        if gap > gap_threshold:
+            ranges_to_keep.append((current_start, previous_end))
+            current_start = seg_start
+
+        previous_end = seg_end
+
+    ranges_to_keep.append((current_start, previous_end))
+
+    ranges_to_keep = [
+        (s, min(e, clip_end)) for s, e in ranges_to_keep if s < clip_end
+    ]
+
+    return ranges_to_keep
+
+
+def cut_clip_with_silence_removed(
+    source_video_path: str,
+    output_path: str,
+    start_seconds: float,
+    end_seconds: float,
+    segments: list[dict],
+    intensity: str = "medium",
+    aspect_ratio: str = "original",
+) -> None:
+    """
+    Like cut_clip, but first removes dead-air gaps between spoken
+    segments before producing the final clip. Captions are not
+    supported in this path yet.
+    """
+    from services.video_compiler_service import concatenate_clips
+
+    ranges = get_ranges_with_silence_removed(segments, start_seconds, end_seconds, intensity)
+
+    if len(ranges) == 1:
+        cut_clip(source_video_path, output_path, ranges[0][0], ranges[0][1], aspect_ratio)
+        return
+
+    output_dir = Path(output_path).parent
+    output_stem = Path(output_path).stem
+    sub_clip_paths = []
+
+    for i, (sub_start, sub_end) in enumerate(ranges):
+        if sub_end - sub_start < 0.05:
+            continue
+        sub_path = output_dir / f"{output_stem}_part{i}.mp4"
+        cut_clip(source_video_path, str(sub_path), sub_start, sub_end, aspect_ratio)
+        sub_clip_paths.append(str(sub_path))
+
+    try:
+        concatenate_clips(sub_clip_paths, output_path)
+    finally:
+        for p in sub_clip_paths:
+            if Path(p).exists():
+                Path(p).unlink()
