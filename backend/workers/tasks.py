@@ -18,7 +18,7 @@ from models.project import Project
 from models.clip import Clip
 from models.scene_project import ScriptProject
 from models.scene import Scene
-from services.video_processor import extract_audio, get_video_duration_seconds, cut_clip
+from services.video_processor import extract_audio, get_video_duration_seconds, cut_clip, cut_clip_with_silence_removed
 from services.whisper_service import transcribe_audio
 from services.subtitle_service import generate_srt_for_clip
 from services.storage_service import upload_file, download_file
@@ -106,7 +106,10 @@ def render_clip_task(clip_id: str):
     """
     Downloads the source video from R2, cuts the clip locally with FFmpeg
     (burning in captions if available), then uploads the rendered clip
-    back to R2.
+    back to R2. If the clip has remove_silence enabled, dead-air gaps
+    between transcript segments are cut out first — this path does not
+    currently support burned-in captions (timestamps would need to be
+    re-computed against the new, shorter timeline).
     """
     db = SessionLocal()
     try:
@@ -135,32 +138,49 @@ def render_clip_task(clip_id: str):
             if not local_video_path.exists():
                 download_file(video.storage_path, str(local_video_path))
 
-            if clip.custom_captions_path:
-                local_subtitle_path = LOCAL_SCRATCH_DIR / f"clip_{clip.id}_custom.srt"
-                download_file(clip.custom_captions_path, str(local_subtitle_path))
-            elif video.segments_path:
-                local_segments_path = LOCAL_SCRATCH_DIR / f"{video.id}.segments.json"
-                if not local_segments_path.exists():
-                    download_file(video.segments_path, str(local_segments_path))
+            if clip.remove_silence:
+                segments_path_local = LOCAL_SCRATCH_DIR / f"{video.id}.segments.json"
+                if not segments_path_local.exists():
+                    download_file(video.segments_path, str(segments_path_local))
+                with open(segments_path_local) as f:
+                    all_segments = json.load(f)
 
-                local_subtitle_path = LOCAL_SCRATCH_DIR / f"clip_{clip.id}.srt"
-                generate_srt_for_clip(
-                    segments_path=str(local_segments_path),
-                    clip_start=clip.start_time_seconds,
-                    clip_end=clip.end_time_seconds,
-                    output_srt_path=str(local_subtitle_path),
+                cut_clip_with_silence_removed(
+                    source_video_path=str(local_video_path),
+                    output_path=str(local_output_path),
+                    start_seconds=clip.start_time_seconds,
+                    end_seconds=clip.end_time_seconds,
+                    segments=all_segments,
+                    intensity=clip.silence_removal_intensity,
+                    aspect_ratio=clip.aspect_ratio or "original",
                 )
+            else:
+                if clip.custom_captions_path:
+                    local_subtitle_path = LOCAL_SCRATCH_DIR / f"clip_{clip.id}_custom.srt"
+                    download_file(clip.custom_captions_path, str(local_subtitle_path))
+                elif video.segments_path:
+                    local_segments_path = LOCAL_SCRATCH_DIR / f"{video.id}.segments.json"
+                    if not local_segments_path.exists():
+                        download_file(video.segments_path, str(local_segments_path))
 
-                upload_file(str(local_subtitle_path), f"clips/clip_{clip.id}.srt")
+                    local_subtitle_path = LOCAL_SCRATCH_DIR / f"clip_{clip.id}.srt"
+                    generate_srt_for_clip(
+                        segments_path=str(local_segments_path),
+                        clip_start=clip.start_time_seconds,
+                        clip_end=clip.end_time_seconds,
+                        output_srt_path=str(local_subtitle_path),
+                    )
 
-            cut_clip(
-                source_video_path=str(local_video_path),
-                output_path=str(local_output_path),
-                start_seconds=clip.start_time_seconds,
-                end_seconds=clip.end_time_seconds,
-                aspect_ratio=clip.aspect_ratio or "original",
-                subtitle_path=str(local_subtitle_path) if local_subtitle_path else None,
-            )
+                    upload_file(str(local_subtitle_path), f"clips/clip_{clip.id}.srt")
+
+                cut_clip(
+                    source_video_path=str(local_video_path),
+                    output_path=str(local_output_path),
+                    start_seconds=clip.start_time_seconds,
+                    end_seconds=clip.end_time_seconds,
+                    aspect_ratio=clip.aspect_ratio or "original",
+                    subtitle_path=str(local_subtitle_path) if local_subtitle_path else None,
+                )
 
             clip_r2_key = f"clips/clip_{clip.id}.mp4"
             upload_file(str(local_output_path), clip_r2_key)
