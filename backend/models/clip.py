@@ -42,6 +42,9 @@ class Clip(Base):
     burn_captions = Column(Boolean, default=True, nullable=False)
     custom_captions_path = Column(String, nullable=True)  # set once user edits captions; overrides auto-generated ones
 
+    remove_silence = Column(Boolean, default=False, nullable=False)
+    silence_removal_intensity = Column(String, default="medium", nullable=False)  # "low" | "medium" | "high"
+
     status = Column(String, default="pending", nullable=False)  # pending -> rendering -> completed -> failed
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
