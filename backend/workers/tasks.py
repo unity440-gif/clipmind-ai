@@ -18,7 +18,13 @@ from models.project import Project
 from models.clip import Clip
 from models.scene_project import ScriptProject
 from models.scene import Scene
-from services.video_processor import extract_audio, get_video_duration_seconds, cut_clip, cut_clip_with_silence_removed
+from services.video_processor import (
+    extract_audio,
+    get_video_duration_seconds,
+    cut_clip,
+    cut_clip_with_silence_removed,
+    mix_background_music,
+)
 from services.whisper_service import transcribe_audio
 from services.subtitle_service import generate_srt_for_clip
 from services.storage_service import upload_file, download_file
@@ -105,11 +111,9 @@ def extract_audio_task(video_id: str):
 def render_clip_task(clip_id: str):
     """
     Downloads the source video from R2, cuts the clip locally with FFmpeg
-    (burning in captions if available), then uploads the rendered clip
-    back to R2. If the clip has remove_silence enabled, dead-air gaps
-    between transcript segments are cut out first — this path does not
-    currently support burned-in captions (timestamps would need to be
-    re-computed against the new, shorter timeline).
+    (burning in captions if available), optionally removes silence,
+    optionally mixes in background music, then uploads the rendered clip
+    back to R2.
     """
     db = SessionLocal()
     try:
@@ -181,6 +185,21 @@ def render_clip_task(clip_id: str):
                     aspect_ratio=clip.aspect_ratio or "original",
                     subtitle_path=str(local_subtitle_path) if local_subtitle_path else None,
                 )
+
+            if clip.background_music_path:
+                local_music_path = LOCAL_SCRATCH_DIR / f"music_{clip.id}{Path(clip.background_music_path).suffix}"
+                download_file(clip.background_music_path, str(local_music_path))
+
+                local_with_music_path = LOCAL_SCRATCH_DIR / f"clip_{clip.id}_with_music.mp4"
+                mix_background_music(
+                    video_path=str(local_output_path),
+                    music_path=str(local_music_path),
+                    output_path=str(local_with_music_path),
+                    duck_volume=clip.music_volume,
+                )
+                os.remove(local_output_path)
+                os.remove(local_music_path)
+                local_output_path = local_with_music_path
 
             clip_r2_key = f"clips/clip_{clip.id}.mp4"
             upload_file(str(local_output_path), clip_r2_key)
