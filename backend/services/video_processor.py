@@ -186,3 +186,52 @@ def cut_clip_with_silence_removed(
         for p in sub_clip_paths:
             if Path(p).exists():
                 Path(p).unlink()
+
+
+def mix_background_music(
+    video_path: str,
+    music_path: str,
+    output_path: str,
+    duck_volume: float = 0.15,
+    fade_duration: float = 1.5,
+) -> None:
+    """
+    Mixes a background music track underneath a video's existing audio.
+    The music plays under the whole clip, fades in/out at the edges, and
+    is kept at a low volume so it never competes with speech.
+
+    `duck_volume` is the music's level relative to its original volume
+    (0.15 = 15%). The music file is looped at the input level via
+    -stream_loop so it covers the full clip duration even if shorter.
+    `normalize=0` on amix stops FFmpeg from automatically halving both
+    tracks' volume just because there are two inputs — without it, the
+    music becomes nearly inaudible even at a reasonable duck_volume.
+    """
+    duration = get_video_duration_seconds(video_path)
+
+    filter_complex = (
+        f"[1:a]atrim=0:{duration},"
+        f"volume={duck_volume},"
+        f"afade=t=in:st=0:d={fade_duration},"
+        f"afade=t=out:st={max(duration - fade_duration, 0)}:d={fade_duration}[music];"
+        f"[0:a][music]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]"
+    )
+
+    command = [
+        "ffmpeg",
+        "-i", video_path,
+        "-stream_loop", "-1",
+        "-i", music_path,
+        "-filter_complex", filter_complex,
+        "-map", "0:v",
+        "-map", "[aout]",
+        "-c:v", "copy",
+        "-c:a", "aac",
+        "-y",
+        output_path,
+    ]
+
+    result = subprocess.run(command, capture_output=True, text=True)
+
+    if result.returncode != 0:
+        raise RuntimeError(f"FFmpeg background music mixing failed: {result.stderr}")
