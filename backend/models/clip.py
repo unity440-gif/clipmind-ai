@@ -45,6 +45,9 @@ class Clip(Base):
     remove_silence = Column(Boolean, default=False, nullable=False)
     silence_removal_intensity = Column(String, default="medium", nullable=False)  # "low" | "medium" | "high"
 
+    background_music_path = Column(String, nullable=True)
+    music_volume = Column(Float, default=0.15, nullable=False)
+
     status = Column(String, default="pending", nullable=False)  # pending -> rendering -> completed -> failed
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
