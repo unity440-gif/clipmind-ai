@@ -25,6 +25,7 @@ from services.video_processor import (
     cut_clip_with_silence_removed,
     mix_background_music,
 )
+from services.music_selector import pick_mood_for_clip, pick_track_for_mood
 from services.whisper_service import transcribe_audio
 from services.subtitle_service import generate_srt_for_clip
 from services.storage_service import upload_file, download_file
@@ -111,9 +112,10 @@ def extract_audio_task(video_id: str):
 def render_clip_task(clip_id: str):
     """
     Downloads the source video from R2, cuts the clip locally with FFmpeg
-    (burning in captions if available), optionally removes silence,
-    optionally mixes in background music, then uploads the rendered clip
-    back to R2.
+    (burning in captions if available), optionally removes silence, mixes
+    in background music (manually chosen or auto-picked by mood keyword
+    matching against the clip's hook/summary/reason), then uploads the
+    rendered clip back to R2.
     """
     db = SessionLocal()
     try:
@@ -186,9 +188,16 @@ def render_clip_task(clip_id: str):
                     subtitle_path=str(local_subtitle_path) if local_subtitle_path else None,
                 )
 
-            if clip.background_music_path:
-                local_music_path = LOCAL_SCRATCH_DIR / f"music_{clip.id}{Path(clip.background_music_path).suffix}"
-                download_file(clip.background_music_path, str(local_music_path))
+            music_path_to_use = clip.background_music_path
+            if not music_path_to_use:
+                mood = pick_mood_for_clip(clip.hook, clip.summary, clip.reason)
+                track = pick_track_for_mood(db, mood)
+                if track:
+                    music_path_to_use = track.storage_path
+
+            if music_path_to_use:
+                local_music_path = LOCAL_SCRATCH_DIR / f"music_{clip.id}{Path(music_path_to_use).suffix}"
+                download_file(music_path_to_use, str(local_music_path))
 
                 local_with_music_path = LOCAL_SCRATCH_DIR / f"clip_{clip.id}_with_music.mp4"
                 mix_background_music(
