@@ -24,7 +24,9 @@ class HookDetectionRequest(BaseModel):
     aspect_ratio: str = "original"  # "original" | "16:9" | "9:16" | "1:1"
     num_clips: int = 5
     burn_captions: bool = True
-
+    remove_silence: bool = False
+    silence_removal_intensity: str = "medium"  # "low" | "medium" | "high"
+    enable_dynamic_zoom: bool = False
 
 class ClipResponse(BaseModel):
     id: uuid.UUID
