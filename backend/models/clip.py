@@ -48,6 +48,8 @@ class Clip(Base):
     background_music_path = Column(String, nullable=True)
     music_volume = Column(Float, default=0.15, nullable=False)
 
+    enable_dynamic_zoom = Column(Boolean, default=False, nullable=False)
+
     status = Column(String, default="pending", nullable=False)  # pending -> rendering -> completed -> failed
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
