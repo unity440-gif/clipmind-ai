@@ -27,7 +27,8 @@ class HookDetectionRequest(BaseModel):
     remove_silence: bool = False
     silence_removal_intensity: str = "medium"  # "low" | "medium" | "high"
     enable_dynamic_zoom: bool = False
-
+    background_music_path: str | None = None  # null = auto-pick, "none" = no music
+    
 class ClipResponse(BaseModel):
     id: uuid.UUID
     video_id: uuid.UUID

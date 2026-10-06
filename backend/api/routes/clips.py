@@ -18,6 +18,7 @@ from models.user import User
 from models.project import Project
 from models.video import Video
 from models.clip import Clip
+from models.music_track import MusicTrack
 from schemas.clip import ClipResponse, HookDetectionRequest, UpdateCaptionsRequest
 from services.hook_detection import detect_hooks
 from services.subtitle_service import parse_srt_file, write_srt_file
@@ -29,6 +30,19 @@ router = APIRouter(prefix="/videos", tags=["clips"])
 
 HOOK_DETECTION_COST = 1
 LOCAL_SCRATCH_DIR = Path("uploads")
+
+
+@router.get("/music-tracks")
+def list_music_tracks(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Returns all available background music tracks for the picker UI."""
+    tracks = db.query(MusicTrack).order_by(MusicTrack.mood, MusicTrack.title).all()
+    return [
+        {"id": str(t.id), "title": t.title, "mood": t.mood, "storage_path": t.storage_path}
+        for t in tracks
+    ]
 
 
 @router.post("/{video_id}/detect-hooks", response_model=list[ClipResponse])
@@ -93,6 +107,7 @@ def run_hook_detection(
             remove_silence=settings.remove_silence,
             silence_removal_intensity=settings.silence_removal_intensity,
             enable_dynamic_zoom=settings.enable_dynamic_zoom,
+            background_music_path=settings.background_music_path or None,
             start_time_seconds=clip_data.get("start_time_seconds"),
             end_time_seconds=clip_data.get("end_time_seconds"),
             title=clip_data.get("title"),

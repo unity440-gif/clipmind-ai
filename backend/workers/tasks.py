@@ -114,8 +114,9 @@ def render_clip_task(clip_id: str):
     """
     Downloads the source video from R2, cuts the clip locally with FFmpeg
     (burning in captions if available), optionally removes silence, mixes
-    in background music (manually chosen or auto-picked by mood), applies
-    a dynamic zoom pulse if enabled, then uploads the rendered clip to R2.
+    in background music (manually chosen, auto-picked by mood, or skipped
+    entirely with "none"), applies a dynamic zoom pulse if enabled, then
+    uploads the rendered clip to R2.
     """
     db = SessionLocal()
     try:
@@ -189,7 +190,9 @@ def render_clip_task(clip_id: str):
                 )
 
             music_path_to_use = clip.background_music_path
-            if not music_path_to_use:
+            if music_path_to_use == "none":
+                music_path_to_use = None
+            elif not music_path_to_use:
                 mood = pick_mood_for_clip(clip.hook, clip.summary, clip.reason)
                 track = pick_track_for_mood(db, mood)
                 if track:
