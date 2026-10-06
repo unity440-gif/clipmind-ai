@@ -4,6 +4,7 @@ Handles audio extraction, duration lookup, and clip cutting with
 optional aspect ratio cropping and burned-in captions.
 """
 
+import math
 import subprocess
 from pathlib import Path
 
@@ -13,8 +14,6 @@ ASPECT_RATIO_FILTERS = {
     "1:1": "crop='min(iw,ih)':'min(iw,ih)'",
 }
 
-# How big a gap between spoken segments has to be (in seconds) before
-# it's treated as "dead air" worth cutting, per intensity level.
 SILENCE_GAP_THRESHOLDS = {
     "low": 1.5,
     "medium": 1.0,
@@ -199,13 +198,6 @@ def mix_background_music(
     Mixes a background music track underneath a video's existing audio.
     The music plays under the whole clip, fades in/out at the edges, and
     is kept at a low volume so it never competes with speech.
-
-    `duck_volume` is the music's level relative to its original volume
-    (0.15 = 15%). The music file is looped at the input level via
-    -stream_loop so it covers the full clip duration even if shorter.
-    `normalize=0` on amix stops FFmpeg from automatically halving both
-    tracks' volume just because there are two inputs — without it, the
-    music becomes nearly inaudible even at a reasonable duck_volume.
     """
     duration = get_video_duration_seconds(video_path)
 
@@ -235,3 +227,67 @@ def mix_background_music(
 
     if result.returncode != 0:
         raise RuntimeError(f"FFmpeg background music mixing failed: {result.stderr}")
+
+
+def apply_dynamic_zoom(
+    video_path: str,
+    output_path: str,
+    zoom_interval_seconds: float = 8.0,
+    max_zoom: float = 1.15,
+    segment_seconds: float = 1.0,
+) -> None:
+    """
+    Applies a smooth, repeating zoom-in/zoom-out pulse by cutting the
+    video into short segments and applying a constant (per-segment) crop
+    zoom level, then concatenating — avoids relying on FFmpeg's
+    time-varying filter expressions, which proved unreliable on this
+    FFmpeg build.
+    """
+    from services.video_compiler_service import concatenate_clips
+
+    duration = get_video_duration_seconds(video_path)
+    output_dir = Path(output_path).parent
+    output_stem = Path(output_path).stem
+
+    sub_clip_paths = []
+    t = 0.0
+    i = 0
+
+    while t < duration:
+        seg_end = min(t + segment_seconds, duration)
+        midpoint = (t + seg_end) / 2
+        zoom = 1 + (max_zoom - 1) / 2 * (1 + math.sin(2 * math.pi * midpoint / zoom_interval_seconds))
+
+        video_filter = (
+            f"crop=w=iw/{zoom}:h=ih/{zoom}:"
+            f"x=(iw-iw/{zoom})/2:y=(ih-ih/{zoom})/2,"
+            f"scale=1920:1080"
+        )
+
+        sub_path = output_dir / f"{output_stem}_zseg{i}.mp4"
+        command = [
+            "ffmpeg",
+            "-i", video_path,
+            "-ss", str(t),
+            "-t", str(seg_end - t),
+            "-vf", video_filter,
+            "-c:v", "libx264",
+            "-preset", "ultrafast",
+            "-c:a", "aac",
+            "-pix_fmt", "yuv420p",
+            "-y", str(sub_path),
+        ]
+        result = subprocess.run(command, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(f"FFmpeg dynamic zoom segment failed: {result.stderr}")
+
+        sub_clip_paths.append(str(sub_path))
+        t = seg_end
+        i += 1
+
+    try:
+        concatenate_clips(sub_clip_paths, output_path)
+    finally:
+        for p in sub_clip_paths:
+            if Path(p).exists():
+                Path(p).unlink()
