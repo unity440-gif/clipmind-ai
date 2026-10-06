@@ -24,6 +24,7 @@ from services.video_processor import (
     cut_clip,
     cut_clip_with_silence_removed,
     mix_background_music,
+    apply_dynamic_zoom,
 )
 from services.music_selector import pick_mood_for_clip, pick_track_for_mood
 from services.whisper_service import transcribe_audio
@@ -113,9 +114,8 @@ def render_clip_task(clip_id: str):
     """
     Downloads the source video from R2, cuts the clip locally with FFmpeg
     (burning in captions if available), optionally removes silence, mixes
-    in background music (manually chosen or auto-picked by mood keyword
-    matching against the clip's hook/summary/reason), then uploads the
-    rendered clip back to R2.
+    in background music (manually chosen or auto-picked by mood), applies
+    a dynamic zoom pulse if enabled, then uploads the rendered clip to R2.
     """
     db = SessionLocal()
     try:
@@ -209,6 +209,15 @@ def render_clip_task(clip_id: str):
                 os.remove(local_output_path)
                 os.remove(local_music_path)
                 local_output_path = local_with_music_path
+
+            if clip.enable_dynamic_zoom:
+                local_zoomed_path = LOCAL_SCRATCH_DIR / f"clip_{clip.id}_zoomed.mp4"
+                apply_dynamic_zoom(
+                    video_path=str(local_output_path),
+                    output_path=str(local_zoomed_path),
+                )
+                os.remove(local_output_path)
+                local_output_path = local_zoomed_path
 
             clip_r2_key = f"clips/clip_{clip.id}.mp4"
             upload_file(str(local_output_path), clip_r2_key)
