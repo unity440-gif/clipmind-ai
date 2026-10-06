@@ -56,6 +56,9 @@ export default function ProjectDetailPage() {
   const [aspectRatio, setAspectRatio] = useState("original");
   const [numClips, setNumClips] = useState(5);
   const [burnCaptions, setBurnCaptions] = useState(true);
+  const [removeSilence, setRemoveSilence] = useState(false);
+  const [silenceIntensity, setSilenceIntensity] = useState("medium");
+  const [enableZoom, setEnableZoom] = useState(false);
 
   const [editingClipId, setEditingClipId] = useState<string | null>(null);
   const [captions, setCaptions] = useState<CaptionEntry[]>([]);
@@ -144,6 +147,9 @@ export default function ProjectDetailPage() {
           aspect_ratio: aspectRatio,
           num_clips: numClips,
           burn_captions: burnCaptions,
+          remove_silence: removeSilence,
+          silence_removal_intensity: silenceIntensity,
+          enable_dynamic_zoom: enableZoom,
         }),
       });
       await loadData();
@@ -290,6 +296,27 @@ export default function ProjectDetailPage() {
           <label className="flex items-center gap-2 text-[12px] text-[#9AA7B8] cursor-pointer mb-3">
             <input type="checkbox" checked={burnCaptions} onChange={(e) => setBurnCaptions(e.target.checked)} className="w-3.5 h-3.5" />
             Burn captions into clips
+          </label>
+
+          <label className="flex items-center gap-2 text-[12px] text-[#9AA7B8] cursor-pointer mb-3">
+            <input type="checkbox" checked={removeSilence} onChange={(e) => setRemoveSilence(e.target.checked)} className="w-3.5 h-3.5" />
+            Remove silence / dead air
+          </label>
+
+          {removeSilence ? (
+            <div className="mb-3 ml-5">
+              <label className="block text-[10px] text-[#6E7A8C] mb-1">Intensity</label>
+              <select value={silenceIntensity} onChange={(e) => setSilenceIntensity(e.target.value)} className="rounded-md bg-[#141C2C] border border-[#22304A] text-white px-2 py-1.5 text-[12px] outline-none focus:border-[#3B7DD8]">
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+          ) : null}
+
+          <label className="flex items-center gap-2 text-[12px] text-[#9AA7B8] cursor-pointer mb-3">
+            <input type="checkbox" checked={enableZoom} onChange={(e) => setEnableZoom(e.target.checked)} className="w-3.5 h-3.5" />
+            Dynamic zoom
           </label>
 
           <button onClick={handleDetectHooks} disabled={detecting || videos.length === 0} className="rounded-lg bg-[#3B7DD8] text-white text-[12px] font-medium px-4 py-2 hover:bg-[#4A8AE0] transition disabled:opacity-50">
