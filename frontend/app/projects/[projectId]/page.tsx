@@ -39,6 +39,13 @@ interface CaptionEntry {
   text: string;
 }
 
+interface MusicTrack {
+  id: string;
+  title: string;
+  mood: string;
+  storage_path: string;
+}
+
 export default function ProjectDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -59,6 +66,8 @@ export default function ProjectDetailPage() {
   const [removeSilence, setRemoveSilence] = useState(false);
   const [silenceIntensity, setSilenceIntensity] = useState("medium");
   const [enableZoom, setEnableZoom] = useState(false);
+  const [musicTracks, setMusicTracks] = useState<MusicTrack[]>([]);
+  const [musicChoice, setMusicChoice] = useState("auto");
 
   const [editingClipId, setEditingClipId] = useState<string | null>(null);
   const [captions, setCaptions] = useState<CaptionEntry[]>([]);
@@ -80,6 +89,11 @@ export default function ProjectDetailPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       setVideos(projectVideos);
+
+      const tracks = await apiFetch(`/videos/music-tracks`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setMusicTracks(tracks);
 
       if (projectVideos.length > 0) {
         const videoClips = await apiFetch(`/videos/${projectVideos[0].id}/clips`, {
@@ -150,6 +164,7 @@ export default function ProjectDetailPage() {
           remove_silence: removeSilence,
           silence_removal_intensity: silenceIntensity,
           enable_dynamic_zoom: enableZoom,
+          background_music_path: musicChoice === "auto" ? null : musicChoice,
         }),
       });
       await loadData();
@@ -318,6 +333,23 @@ export default function ProjectDetailPage() {
             <input type="checkbox" checked={enableZoom} onChange={(e) => setEnableZoom(e.target.checked)} className="w-3.5 h-3.5" />
             Dynamic zoom
           </label>
+
+          <div className="mb-3">
+            <label className="block text-[10px] text-[#6E7A8C] mb-1">Background music</label>
+            <select
+              value={musicChoice}
+              onChange={(e) => setMusicChoice(e.target.value)}
+              className="w-full rounded-md bg-[#141C2C] border border-[#22304A] text-white px-2.5 py-1.5 text-[12px] outline-none focus:border-[#3B7DD8]"
+            >
+              <option value="auto">Auto (match mood)</option>
+              <option value="none">No music</option>
+              {musicTracks.map((track) => (
+                <option key={track.id} value={track.storage_path}>
+                  {track.title} ({track.mood})
+                </option>
+              ))}
+            </select>
+          </div>
 
           <button onClick={handleDetectHooks} disabled={detecting || videos.length === 0} className="rounded-lg bg-[#3B7DD8] text-white text-[12px] font-medium px-4 py-2 hover:bg-[#4A8AE0] transition disabled:opacity-50">
             {detecting ? "Analyzing transcript..." : "Run AI hook detection (1 credit)"}
